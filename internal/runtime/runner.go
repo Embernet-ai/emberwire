@@ -418,6 +418,10 @@ func (e emitter) Error(err error, msg *engine.Msg) {
 
 func (e emitter) Done(msg *engine.Msg, err error) { e.r.rt.onComplete(e.r, msg, err) }
 
+func (e emitter) Publish(topic string, data map[string]any) {
+	e.r.rt.Publish(Event{Topic: topic, Data: data})
+}
+
 func (e emitter) Log(level node.LogLevel, format string, args ...any) {
 	e.r.rt.log(e.r, level, format, args...)
 }

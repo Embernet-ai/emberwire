@@ -245,7 +245,6 @@ type debugNode struct {
 	svc        node.Services
 	nodeID     string
 	nodeName   string
-	publish    func(topic string, data map[string]any)
 }
 
 func registerDebug() {
@@ -275,10 +274,6 @@ func registerDebug() {
 	}, newDebug)
 }
 
-// DebugPublisher lets the runtime give debug nodes a way to reach the editor.
-// It is set once at startup by the API layer.
-var DebugPublisher func(topic string, data map[string]any)
-
 func newDebug(def *node.Definition) (node.Node, error) {
 	n := &debugNode{
 		active:     def.Node.PropBool("active", true),
@@ -290,7 +285,6 @@ func newDebug(def *node.Definition) (node.Node, error) {
 		svc:        def.Services,
 		nodeID:     def.Node.ID,
 		nodeName:   def.Node.Name,
-		publish:    DebugPublisher,
 	}
 	if n.complete == "" {
 		n.complete = "payload"
@@ -324,8 +318,8 @@ func (n *debugNode) Receive(_ context.Context, m *engine.Msg, out node.Emitter) 
 		out.Status(node.Status{Fill: "grey", Shape: "dot", Text: truncate(stringify(shown), 32)})
 	}
 
-	if n.toSidebar && n.publish != nil {
-		n.publish("debug", map[string]any{
+	if n.toSidebar {
+		out.Publish("debug", map[string]any{
 			"id":     n.nodeID,
 			"name":   n.nodeName,
 			"topic":  m.Topic(),

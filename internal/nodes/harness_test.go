@@ -49,11 +49,12 @@ func (s *testServices) Log(node.LogLevel, string, ...any)    {}
 
 // testEmitter records everything a node emits.
 type testEmitter struct {
-	mu       sync.Mutex
-	sent     map[int][]*engine.Msg
-	statuses []node.Status
-	errs     []error
-	dones    int
+	mu        sync.Mutex
+	sent      map[int][]*engine.Msg
+	statuses  []node.Status
+	errs      []error
+	dones     int
+	published []publishedEvent
 }
 
 func newTestEmitter() *testEmitter {
@@ -96,6 +97,30 @@ func (e *testEmitter) Done(*engine.Msg, error) {
 
 func (e *testEmitter) Log(node.LogLevel, string, ...any) {}
 
+func (e *testEmitter) Publish(topic string, data map[string]any) {
+	e.mu.Lock()
+	defer e.mu.Unlock()
+	e.published = append(e.published, publishedEvent{Topic: topic, Data: data})
+}
+
+type publishedEvent struct {
+	Topic string
+	Data  map[string]any
+}
+
+// publishedOn returns the events published on a topic.
+func (e *testEmitter) publishedOn(topic string) []publishedEvent {
+	e.mu.Lock()
+	defer e.mu.Unlock()
+	var out []publishedEvent
+	for _, p := range e.published {
+		if p.Topic == topic {
+			out = append(out, p)
+		}
+	}
+	return out
+}
+
 // on returns the messages emitted on a port.
 func (e *testEmitter) on(port int) []*engine.Msg {
 	e.mu.Lock()
@@ -126,12 +151,14 @@ func (e *testEmitter) total() int {
 	return n
 }
 
-// build constructs a node of the given type from a JSON config fragment.
+// parseNodeConfig turns a JSON config fragment into a parsed flow entry.
 //
-// Taking the config as JSON rather than a Go literal is deliberate: it is the
-// same shape the flow file carries, so a test exercises the real parsing path
-// including the string-vs-number quirks Node-RED edit dialogs produce.
-func build(t *testing.T, typ, configJSON string, svc node.Services) node.Node {
+// It goes through engine.ParseFlows rather than constructing engine.Node by
+// hand, so a test exercises the same path a deploy does — including the typed
+// fields the parser derives from the raw map. Hand-building the struct hid a
+// bug once already: the harness left Node.Name empty, so a node reading it
+// looked broken in a test that was itself wrong.
+func parseNodeConfig(t *testing.T, typ, configJSON string) *engine.Node {
 	t.Helper()
 
 	var raw map[string]any
@@ -143,19 +170,49 @@ func build(t *testing.T, typ, configJSON string, svc node.Services) node.Node {
 	if _, ok := raw["z"]; !ok {
 		raw["z"] = "test-flow"
 	}
+	// Coordinates and wires make this a flow node rather than a config node,
+	// which is the structural rule the parser applies.
+	if _, ok := raw["x"]; !ok {
+		raw["x"] = 100.0
+	}
+	if _, ok := raw["y"]; !ok {
+		raw["y"] = 100.0
+	}
+	if _, ok := raw["wires"]; !ok {
+		raw["wires"] = []any{[]any{}}
+	}
+
+	doc, err := json.Marshal([]any{
+		map[string]any{"id": "test-flow", "type": "tab", "label": "test"},
+		raw,
+	})
+	if err != nil {
+		t.Fatalf("building flow document: %v", err)
+	}
+	flows, err := engine.ParseFlows(doc)
+	if err != nil {
+		t.Fatalf("parsing flow document: %v", err)
+	}
+	en, ok := flows.Nodes["test-node"]
+	if !ok {
+		t.Fatal("the node did not survive parsing")
+	}
+	return en
+}
+
+// build constructs a node of the given type from a JSON config fragment.
+//
+// Taking the config as JSON rather than a Go literal is deliberate: it is the
+// same shape the flow file carries, so a test exercises the real parsing path
+// including the string-vs-number quirks Node-RED edit dialogs produce.
+func build(t *testing.T, typ, configJSON string, svc node.Services) node.Node {
+	t.Helper()
 
 	reg, ok := node.Default.Lookup(typ)
 	if !ok {
 		t.Fatalf("node type %q is not registered", typ)
 	}
-
-	en := &engine.Node{
-		ID:   "test-node",
-		Type: typ,
-		Z:    "test-flow",
-		Raw:  raw,
-	}
-	n, err := reg.New(&node.Definition{Node: en, Services: svc})
+	n, err := reg.New(&node.Definition{Node: parseNodeConfig(t, typ, configJSON), Services: svc})
 	if err != nil {
 		t.Fatalf("building %s: %v", typ, err)
 	}
@@ -166,21 +223,11 @@ func build(t *testing.T, typ, configJSON string, svc node.Services) node.Node {
 func buildErr(t *testing.T, typ, configJSON string, svc node.Services) error {
 	t.Helper()
 
-	var raw map[string]any
-	if err := json.Unmarshal([]byte(configJSON), &raw); err != nil {
-		t.Fatalf("parsing config: %v", err)
-	}
-	raw["id"] = "test-node"
-	raw["type"] = typ
-
 	reg, ok := node.Default.Lookup(typ)
 	if !ok {
 		t.Fatalf("node type %q is not registered", typ)
 	}
-	_, err := reg.New(&node.Definition{
-		Node:     &engine.Node{ID: "test-node", Type: typ, Z: "test-flow", Raw: raw},
-		Services: svc,
-	})
+	_, err := reg.New(&node.Definition{Node: parseNodeConfig(t, typ, configJSON), Services: svc})
 	return err
 }
 

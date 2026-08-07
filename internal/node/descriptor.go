@@ -488,6 +488,15 @@ type Emitter interface {
 	// nodes and message-tracing.
 	Done(msg *engine.Msg, err error)
 
+	// Publish sends an event to connected editors on an arbitrary topic. The
+	// Debug node uses it to reach the debug sidebar.
+	//
+	// This is on the Emitter rather than a package-level hook so that a node
+	// publishes into the runtime it belongs to. With more than one runtime in a
+	// process — which every test that starts two of them is — a global would
+	// cross the streams.
+	Publish(topic string, data map[string]any)
+
 	// Log emits a log line attributed to this node.
 	Log(level LogLevel, format string, args ...any)
 }
