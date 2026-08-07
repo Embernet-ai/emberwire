@@ -370,6 +370,16 @@ func (rt *Runtime) Stop(ctx context.Context) []error {
 	// Cancel first so Starter goroutines wind down and stop producing.
 	rt.cancel()
 
+	// Then let the graph go quiet before signalling anyone to exit.
+	//
+	// Without this, runners stop concurrently and a downstream node can drain
+	// its inbox to empty and exit while an upstream node still has messages to
+	// forward — the work is accepted into a channel nobody is reading any more
+	// and is silently lost. Waiting for every node to be simultaneously idle is
+	// what makes "a redeploy finishes work in flight" true rather than
+	// usually-true.
+	rt.quiesce(closeCtx)
+
 	var errs []error
 	var wg sync.WaitGroup
 	for _, r := range rt.runners {
@@ -405,6 +415,34 @@ func (rt *Runtime) Stop(ctx context.Context) []error {
 	rt.eventsMu.Unlock()
 
 	return errs
+}
+
+// quiesce waits until every runner is simultaneously idle — nothing queued and
+// nothing inside a handler — so that messages still moving between nodes reach
+// their destination before anything shuts down.
+//
+// A flow containing a self-sustaining cycle never goes quiet. That is what the
+// context deadline is for: shutdown proceeds anyway rather than hanging, and the
+// close timeout bounds how long a deploy can be held up by one runaway loop.
+func (rt *Runtime) quiesce(ctx context.Context) {
+	const pollInterval = 250 * time.Microsecond
+	for {
+		allIdle := true
+		for _, r := range rt.runners {
+			if !r.idle() {
+				allIdle = false
+				break
+			}
+		}
+		if allIdle {
+			return
+		}
+		select {
+		case <-ctx.Done():
+			return
+		case <-time.After(pollInterval):
+		}
+	}
 }
 
 func sortedKeys[V any](m map[string]V) []string {

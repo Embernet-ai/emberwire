@@ -174,6 +174,11 @@ type runner struct {
 
 	stats Stats
 
+	// inFlight counts messages currently inside Receive. Shutdown needs it:
+	// an empty inbox does not mean idle, because the node may still be running
+	// a handler that is about to send downstream.
+	inFlight atomic.Int64
+
 	// status is the last badge the node set, retained so a newly connected
 	// editor can be shown current state without waiting for the next change.
 	statusMu sync.RWMutex
@@ -299,6 +304,8 @@ func (r *runner) loop(ctx context.Context) {
 // rather than taking the process down.
 func (r *runner) handle(ctx context.Context, d delivery) {
 	r.stats.Received.Add(1)
+	r.inFlight.Add(1)
+	defer r.inFlight.Add(-1)
 	r.rt.observeQueueLatency(r, r.rt.opts.Now().Sub(d.enqueued))
 
 	defer func() {
@@ -326,6 +333,11 @@ func (r *runner) handle(ctx context.Context, d delivery) {
 // emitter returns this runner's Emitter. It is a value type wrapping the runner
 // pointer, so handing it out costs nothing and it is safe to keep.
 func (r *runner) emitter() node.Emitter { return emitter{r: r} }
+
+// idle reports whether the node has nothing queued and nothing in a handler.
+func (r *runner) idle() bool {
+	return len(r.inbox) == 0 && r.inFlight.Load() == 0
+}
 
 // Snapshot copies the runner's counters.
 func (r *runner) Snapshot() Snapshot {
