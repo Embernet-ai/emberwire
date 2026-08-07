@@ -4,6 +4,14 @@
 // every external host, and an edge box has no internet, so anything not bundled
 // simply would not load.
 
+/**
+ * A node type, as served by GET /nodes.
+ *
+ * This mirrors node.Descriptor in Go exactly. It is the entire contract between
+ * the runtime and the editor: there is no per-node HTML anywhere, so a node type
+ * that declares itself correctly here gets a working edit dialog with no
+ * front-end change at all.
+ */
 export interface Descriptor {
   type: string;
   category: string;
@@ -11,8 +19,16 @@ export interface Descriptor {
   icon: string;
   inputs: number;
   outputs: number;
+  /** Names a property that determines the output count, e.g. a Switch node's rules. */
+  outputsProp?: string;
+  /** Names the property used as the node's canvas label. */
+  labelProp?: string;
   paletteLabel?: string;
+  align?: string;
   isConfig?: boolean;
+  hasButton?: boolean;
+  inputLabels?: string[];
+  outputLabels?: string[];
   props?: PropDef[];
   help?: string;
   compatibility: { level: string; notes?: string; unsupportedProps?: string[] };
@@ -27,8 +43,16 @@ export interface PropDef {
   placeholder?: string;
   help?: string;
   options?: { value: unknown; label: string }[];
+  /** Narrows the type selector for a typedInput. */
+  typedInputTypes?: string[];
+  /**
+   * Names the companion property holding the selected type for a typedInput.
+   * Node-RED spells these inconsistently — pt, tot, vt — so it is explicit.
+   */
+  typeProp?: string;
   fields?: PropDef[];
   configType?: string;
+  language?: string;
 }
 
 export interface NodeStat {
@@ -154,6 +178,38 @@ export class Api {
 
   flows(): Promise<{ rev: string; flows: unknown[]; warnings?: string[] }> {
     return this.get('/flows');
+  }
+
+  /**
+   * Deploys a flow set.
+   *
+   * The revision travels in a header rather than the body so the payload stays
+   * a plain v1 array — exactly what the runtime persists and what an operator
+   * can paste into a file. Passing an empty rev forces the write, which is the
+   * "overwrite theirs" branch of a conflict.
+   */
+  async deploy(
+    flows: unknown[],
+    rev: string,
+  ): Promise<{ rev: string; warnings?: string[]; failures?: { id: string; type: string; error: string }[] }> {
+    const res = await fetch(`${this.base}/flows`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Emberwire-Deployment-Rev': rev,
+        ...(this.token ? { Authorization: `Bearer ${this.token}` } : {}),
+      },
+      body: JSON.stringify(flows),
+    });
+    if (res.status === 401) {
+      this.setToken(null);
+      throw new ApiError(401, 'session expired');
+    }
+    if (!res.ok) {
+      const body = await res.json().catch(() => ({ error: res.statusText }));
+      throw new ApiError(res.status, body.error ?? res.statusText);
+    }
+    return res.json();
   }
 
   /**
