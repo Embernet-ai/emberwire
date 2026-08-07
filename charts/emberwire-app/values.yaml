@@ -122,6 +122,27 @@ discovery:
     - NET_RAW
     - NET_ADMIN
 
+# ── The exec node ────────────────────────────────────────────────────────────
+# Off by default, and enabling it without listing the commands is a startup
+# error rather than a licence to run anything.
+#
+# This is the node behind CVE-2025-41656: unauthenticated remote code execution
+# against a default Node-RED, reached by deploying a flow with an exec node in
+# it. Emberwire will not start without authentication, and this list is the
+# second lock — anyone who does get edit access still cannot run a command that
+# is not named here. There is no shell either, so an allowed command cannot be
+# chained into an arbitrary one.
+#
+# Entries are matched on the resolved absolute path. A command that is not on
+# the PATH yet is kept and resolved again when a flow uses it, so an init
+# container or a mounted volume can supply it after start-up.
+exec:
+  enabled: false
+  allowedCommands: []
+  # e.g.
+  #   - /usr/bin/mbpoll
+  #   - /opt/plant/bin/reset-line
+
 # ── Persistence ──────────────────────────────────────────────────────────────
 # 2Gi per the edge Longhorn sweep. Flows, credentials and context all live here.
 persistence:

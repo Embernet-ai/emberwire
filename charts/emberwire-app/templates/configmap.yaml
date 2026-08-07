@@ -44,6 +44,15 @@ data:
         []
         {{- end }}
 
+    exec:
+      enabled: {{ .Values.exec.enabled }}
+      allowedCommands:
+        {{- if .Values.exec.allowedCommands }}
+        {{- toYaml .Values.exec.allowedCommands | nindent 8 }}
+        {{- else }}
+        []
+        {{- end }}
+
     logging:
       level: {{ .Values.logging.level }}
       format: {{ .Values.logging.format }}

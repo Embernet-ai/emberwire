@@ -27,6 +27,7 @@ type Config struct {
 	Auth      Auth      `yaml:"auth"`
 	Runtime   Runtime   `yaml:"runtime"`
 	Discovery Discovery `yaml:"discovery"`
+	Exec      Exec      `yaml:"exec"`
 	Logging   Logging   `yaml:"logging"`
 	Metrics   Metrics   `yaml:"metrics"`
 }
@@ -104,6 +105,22 @@ type Discovery struct {
 	// dialog, so an empty list with discovery enabled is a configuration error
 	// rather than "scan everything".
 	AllowedCIDRs []string `yaml:"allowedCIDRs"`
+}
+
+// Exec gates the exec node.
+//
+// Off by default, and an enabled node with no allowed commands is a
+// configuration error rather than "anything goes". Node-RED's exec node against
+// a default configuration is CVE-2025-41656 — unauthenticated remote code
+// execution, reached by deploying a flow — and the reason it is that severe is
+// that nothing between "can edit a flow" and "can run any command" exists. This
+// is that thing.
+type Exec struct {
+	Enabled bool `yaml:"enabled"`
+	// AllowedCommands lists what a flow may run. Entries are matched on the
+	// resolved absolute path, so naming "curl" allows the curl on the PATH at
+	// the time and not whatever a later mount puts in front of it.
+	AllowedCommands []string `yaml:"allowedCommands"`
 }
 
 // Logging controls the runtime log.
@@ -226,6 +243,12 @@ func applyEnv(cfg *Config) {
 	}
 	if v := os.Getenv("EMBERWIRE_DISCOVERY_CIDRS"); v != "" {
 		cfg.Discovery.AllowedCIDRs = splitList(v)
+	}
+	if envBool("EMBERWIRE_EXEC_ENABLED") {
+		cfg.Exec.Enabled = true
+	}
+	if v := os.Getenv("EMBERWIRE_EXEC_ALLOWED_COMMANDS"); v != "" {
+		cfg.Exec.AllowedCommands = splitList(v)
 	}
 }
 
@@ -351,6 +374,13 @@ func (c *Config) Validate() error {
 	if c.Discovery.Enabled && len(c.Discovery.AllowedCIDRs) == 0 {
 		return fmt.Errorf("discovery.enabled is true but discovery.allowedCIDRs is empty; " +
 			"list the networks the scan nodes may probe, or disable discovery")
+	}
+
+	// The exec node. Same shape as discovery and for the same reason: an empty
+	// allowlist read permissively is how a narrow capability becomes a shell.
+	if c.Exec.Enabled && len(c.Exec.AllowedCommands) == 0 {
+		return fmt.Errorf("exec.enabled is true but exec.allowedCommands is empty; " +
+			"list the commands a flow may run, or disable the exec node")
 	}
 
 	return nil

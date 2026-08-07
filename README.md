@@ -32,6 +32,12 @@ across nodes.
 untrusted code."*](https://nodejs.org/api/vm.html) Node-RED's trust model is that
 anyone who can deploy a flow already owns the box — the `exec` node is right
 there. Fair enough, but we can do better than that on a customer's plant floor.
+It is also not a hypothetical: [CVE-2025-41656](https://nvd.nist.gov/vuln/detail/CVE-2025-41656)
+is unauthenticated remote code execution against a default Node-RED, reached by
+deploying a flow with an `exec` node in it. Emberwire refuses to start without
+authentication, and the `exec` node here refuses to run anything until an
+operator names the commands it may run. There is no shell, so an allowed command
+cannot be chained into an arbitrary one.
 
 **Credentials are encrypted with AES-256-CTR and a raw SHA-256 of your secret.**
 CTR has no MAC, so anyone who can write `flows_cred.json` on a shared PVC can
@@ -86,7 +92,7 @@ with zero lost updates.
 Being straight about this, the way the EmberRTOS README is.
 
 **Runs.** `emberwire` starts, serves the API and the editor, loads flows off the
-PVC and moves messages. The chart deploys it three ways. 30 node types.
+PVC and moves messages. The chart deploys it three ways. 33 node types.
 
 **Done and tested.** The engine — message model, property expressions, the v1
 flow parser, the scheduler with back-pressure, Catch/Status/Complete with the
@@ -103,11 +109,10 @@ is the escaping bug that would otherwise fragment a series silently.
 
 **Race detector: clean**, every package, on Linux with cgo.
 
-**Not done yet.** Prometheus metrics beyond the counters the API already
-exposes. The `template`, `delay`, `trigger` and `exec` nodes. HTTP In/Request,
-WebSocket, TCP and UDP nodes. Subflow execution — subflows parse and round-trip
-but instances do not run yet. Registering the chart in the dashboard's
-`HelmRepoURLs`.
+**Not done yet.** HTTP In/Response/Request, WebSocket, TCP and UDP nodes. File
+and watch nodes. XML, YAML and HTML parsers. Subflow execution — subflows parse
+and round-trip but instances do not run yet. Registering the chart in the
+dashboard's `HelmRepoURLs`.
 
 **Still not benchmarked against Node-RED.** Every number in this README is
 Emberwire measured on my box. The comparison numbers do not exist because I have

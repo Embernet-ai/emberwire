@@ -32,13 +32,13 @@ appear to work while routing on a literal string.
 
 ## Summary
 
-32 node types registered.
+33 node types registered.
 
 | Level | Count |
 |---|---|
 | full | 8 |
 | partial | 16 |
-| divergent | 2 |
+| divergent | 3 |
 | emberwire-only | 6 |
 
 ## Common
@@ -76,6 +76,7 @@ appear to work while routing on a literal string.
 |---|---|---|
 | `change` | partial | set, change, delete and move are supported for msg, flow and global targets. JSONata-typed values are not evaluated in this build. |
 | `delay` | divergent | All six modes are implemented — fixed, variable, random, rate limit, per-topic queue and timed release — along with msg.reset, msg.flush and the second output for dropped messages. Two deliberate differences: the queue is bounded, and past the limit a message is refused to a Catch node rather than held, because Node-RED's unbounded queue turns a source faster than the drain into an OOM-kill with no explanation; and messages still held when the flow stops are released rather than discarded. |
+| `exec` | divergent | The three outputs, both buffered and streaming modes, the timeout and the appended message property all behave as Node-RED's do. Two things do not, and neither is negotiable. There is no shell: the command line is split on quoting rules only, and an unquoted shell metacharacter is refused rather than run, so one allowed command cannot become an arbitrary one. And the node is disabled until an operator names the commands a flow may run — Node-RED's exec node against a default configuration is CVE-2025-41656, unauthenticated remote code execution. Output is capped per stream; a command that exceeds it is killed and reported rather than being allowed to fill the heap. A command that forks children of its own may leave them behind when it is killed. |
 | `function` | partial | Runs on goja, a JavaScript interpreter written in Go, rather than Node's vm module. The language is ES2023; the Node standard library is not present. require() and npm modules do not work and cannot be made to without embedding Node. There is always a CPU time limit, which Node-RED leaves optional and off. setTimeout and setInterval are not available — use a Delay or Trigger node, which the runtime can account for. Ignored properties: `libs`, `setTimeout`, `setInterval`, `require`. |
 | `range` | full | — |
 | `rbe` | partial | Block-unless-changed and deadband modes are supported. Narrowband modes are not implemented in this build. |

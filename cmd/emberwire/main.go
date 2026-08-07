@@ -22,6 +22,7 @@ import (
 	"github.com/embernet-ai/emberwire/internal/node"
 	"github.com/embernet-ai/emberwire/internal/nodes" // registers the built-in palette
 	"github.com/embernet-ai/emberwire/internal/runtime"
+	"github.com/embernet-ai/emberwire/internal/shell"
 	"github.com/embernet-ai/emberwire/internal/store"
 )
 
@@ -89,6 +90,25 @@ func cmdServe(args []string) error {
 	if cfg.Discovery.Enabled {
 		log.Warn("network discovery is enabled",
 			"allowedCIDRs", strings.Join(cfg.Discovery.AllowedCIDRs, ","))
+	}
+
+	// Same treatment for the exec node: the policy is installed before any flow
+	// starts, so a node can never run for even one message against an unset one.
+	commands, err := shell.NewPolicy(cfg.Exec.Enabled, cfg.Exec.AllowedCommands)
+	if err != nil {
+		return fmt.Errorf("exec: %w", err)
+	}
+	nodes.Commands = commands
+	if cfg.Exec.Enabled {
+		log.Warn("the exec node is enabled",
+			"allowedCommands", strings.Join(commands.Allowed(), ","))
+		// Said at boot rather than at the first message: an operator who
+		// misspelled a command should find out while they are still looking.
+		if missing := commands.Unresolved(); len(missing) > 0 {
+			log.Warn("some allowed commands were not found on the PATH; they will be "+
+				"resolved again if a flow uses one, in case they are mounted later",
+				"commands", strings.Join(missing, ","))
+		}
 	}
 
 	if err := os.MkdirAll(cfg.Data.Dir, 0o700); err != nil {
