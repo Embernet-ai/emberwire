@@ -108,9 +108,27 @@ on.
 
 ## Compatibility
 
-`flows.json` v1 loads and round-trips. A node type this build has never heard of
-survives a load-and-save with every property intact, so it is safe to run a
-Node-RED-authored flow here and hand it back.
+`flows.json` v1 loads and saves **byte for byte**. Load a file Node-RED wrote,
+save it without editing anything, and you get the same bytes back — same key
+order, same spacing, no rewritten escapes. Edit one property and the diff is one
+line, not the whole node.
+
+That is harder in Go than it sounds and I nearly did not bother. A JavaScript
+object preserves key insertion order, so Node-RED gets this for free from
+`JSON.parse` and `JSON.stringify`. A Go map has no order at all and
+`encoding/json` deliberately sorts keys. Rather than force an order-preserving
+map through every read path in the codebase, each entry's original bytes are kept
+and re-emitted when the parsed form is unchanged, and re-encoded against the
+original key order when it is not. `json.Compact` and `json.Indent` are byte-level
+transforms, so they re-indent without reordering.
+
+It matters for two reasons. Your flow file lives on a PVC and in git, and it
+should not churn because a pod restarted. And when an operator reviews a deploy
+diff before pushing it to a line, they should see what changed and nothing else.
+
+A node type this build has never heard of survives a load-and-save with every
+property intact, so it is safe to run a Node-RED-authored flow here and hand it
+back.
 
 **Node-RED community nodes do not work.** They are npm packages that need
 Node.js. There is no version of this where they do, and I am not going to pretend

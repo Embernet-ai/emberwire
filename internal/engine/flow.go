@@ -1,8 +1,10 @@
 package engine
 
 import (
+	"bytes"
 	"encoding/json"
 	"fmt"
+	"reflect"
 	"sort"
 	"strings"
 )
@@ -183,11 +185,9 @@ type Group struct {
 // Flows is a parsed flow file.
 //
 // Order preserves the original array order so that a save does not reshuffle the
-// document. Note that key order *within* an object is not preserved: Go maps are
-// unordered and encoding/json emits keys sorted. The output is therefore stable
-// and diff-friendly across saves, but the first save after importing a Node-RED
-// file will reorder keys once. That is a deliberate trade — an order-preserving
-// map would touch every read path to buy cosmetic fidelity on a single write.
+// document, and orig preserves each entry's original bytes so that key order
+// inside an entry survives too. Together those give a byte-identical round-trip
+// for anything the caller did not actually change — see Marshal.
 type Flows struct {
 	Tabs     map[string]*Tab
 	Subflows map[string]*Subflow
@@ -196,6 +196,10 @@ type Flows struct {
 
 	// Order is the ids of every entry, in original file order.
 	Order []string
+
+	// orig holds each entry exactly as it was read, keyed by id. Entries
+	// created after parsing have no entry here and are marshalled fresh.
+	orig map[string]json.RawMessage
 
 	// Rev is the revision token used for optimistic concurrency on deploy, the
 	// same mechanism as Node-RED's /flows rev field.
@@ -236,7 +240,10 @@ func ParseFlows(data []byte) (*Flows, error) {
 		return newEmptyFlows(), nil
 	}
 
-	var raw []map[string]any
+	// Entries are decoded twice: once as raw bytes, once as maps. The raw form
+	// is what makes a byte-identical round-trip possible — see entryBytes.
+	var rawEntries []json.RawMessage
+	var rev string
 
 	if strings.HasPrefix(trimmed, "{") {
 		var wrapper struct {
@@ -244,7 +251,7 @@ func ParseFlows(data []byte) (*Flows, error) {
 			// A pointer so that an absent "flows" key is distinguishable from
 			// an empty one. Treating a document without it as an empty flow set
 			// would silently discard whatever the caller actually sent.
-			Flows *[]map[string]any `json:"flows"`
+			Flows *[]json.RawMessage `json:"flows"`
 		}
 		if err := json.Unmarshal(data, &wrapper); err != nil {
 			return nil, &ParseError{Index: -1, Msg: fmt.Sprintf("decoding wrapped flow document: %v", err)}
@@ -252,19 +259,34 @@ func ParseFlows(data []byte) (*Flows, error) {
 		if wrapper.Flows == nil {
 			return nil, &ParseError{Index: -1, Msg: `flow document is an object with no "flows" array`}
 		}
-		raw = *wrapper.Flows
-		f, err := buildFlows(raw)
-		if err != nil {
-			return nil, err
-		}
-		f.Rev = wrapper.Rev
-		return f, nil
-	}
-
-	if err := json.Unmarshal(data, &raw); err != nil {
+		rawEntries = *wrapper.Flows
+		rev = wrapper.Rev
+	} else if err := json.Unmarshal(data, &rawEntries); err != nil {
 		return nil, &ParseError{Index: -1, Msg: fmt.Sprintf("decoding flow array: %v", err)}
 	}
-	return buildFlows(raw)
+
+	objs := make([]map[string]any, len(rawEntries))
+	for i, re := range rawEntries {
+		if err := json.Unmarshal(re, &objs[i]); err != nil {
+			return nil, &ParseError{Index: i, Msg: fmt.Sprintf("decoding flow entry: %v", err)}
+		}
+		if objs[i] == nil {
+			return nil, &ParseError{Index: i, Msg: "flow entry is null"}
+		}
+	}
+
+	f, err := buildFlows(objs)
+	if err != nil {
+		return nil, err
+	}
+	f.Rev = rev
+
+	// Index the original bytes by id so an unmodified entry can be written back
+	// exactly as it arrived.
+	for i, id := range f.Order {
+		f.orig[id] = rawEntries[i]
+	}
+	return f, nil
 }
 
 func newEmptyFlows() *Flows {
@@ -273,6 +295,7 @@ func newEmptyFlows() *Flows {
 		Subflows: map[string]*Subflow{},
 		Groups:   map[string]*Group{},
 		Nodes:    map[string]*Node{},
+		orig:     map[string]json.RawMessage{},
 	}
 }
 
@@ -630,33 +653,271 @@ func (f *Flows) Entry(id string) (map[string]any, bool) {
 	return nil, false
 }
 
-// MarshalJSON writes the flow file back as a v1 array, in original entry order.
+// FlowFileIndent is the indentation Node-RED writes with, from
+// JSON.stringify(flows, null, 4). Matching it is what lets a file written here
+// be byte-identical to one written there.
+const FlowFileIndent = "    "
+
+// entryBytes returns the JSON for one entry.
 //
-// The raw objects are emitted directly, so properties belonging to node types
-// this build does not implement survive a load-and-save cycle untouched. That is
-// the property that makes it safe to run Emberwire against a flow authored in
-// Node-RED and then hand it back.
-func (f *Flows) MarshalJSON() ([]byte, error) {
-	out := make([]map[string]any, 0, len(f.Order))
-	for _, id := range f.Order {
-		if raw, ok := f.Entry(id); ok {
-			out = append(out, raw)
-		}
+// When the parsed form still deep-equals what was read, the original bytes are
+// returned verbatim. That is the whole mechanism behind the byte-identical
+// round-trip: JavaScript objects preserve key insertion order, so Node-RED gets
+// this for free, whereas a Go map has no order at all and encoding/json emits
+// keys sorted. Rather than impose an order-preserving map on every read path in
+// the codebase, the bytes that already carry the right order are kept and
+// reused.
+//
+// The comparison is done by decoding the original rather than by tracking a
+// dirty flag, because a dirty flag relies on every mutation site remembering to
+// set it, and the one that forgets is the one that silently corrupts a
+// customer's flow file.
+func (f *Flows) entryBytes(id string) ([]byte, error) {
+	cur, ok := f.Entry(id)
+	if !ok {
+		return nil, fmt.Errorf("no flow entry with id %q", id)
 	}
-	return json.Marshal(out)
+	if orig, ok := f.orig[id]; ok {
+		var check map[string]any
+		if err := json.Unmarshal(orig, &check); err == nil && reflect.DeepEqual(check, cur) {
+			return orig, nil
+		}
+		// Changed, but the original still describes where its keys belong.
+		// Re-encoding against it keeps an edit to one property a one-line diff
+		// instead of reshuffling the whole node — which is the difference
+		// between an operator being able to review a deploy and not.
+		return marshalOrdered(orig, cur)
+	}
+	return marshalUnescaped(cur)
 }
 
-// Marshal renders the flow file as indented JSON, matching Node-RED's
-// flowFilePretty output so the file stays readable and diffable in git.
+// marshalOrdered encodes v, emitting object keys in the order they appear in
+// tmpl. Keys absent from tmpl are appended in sorted order so the output stays
+// deterministic; keys absent from v are dropped.
+//
+// Recurses through nested objects and arrays, because a node's interesting
+// structure — a Change node's rule list, a Switch node's rules — is nested, and
+// preserving order only at the top level would still rewrite all of it.
+func marshalOrdered(tmpl json.RawMessage, v any) ([]byte, error) {
+	switch cur := v.(type) {
+	case map[string]any:
+		order, fields, ok := objectFields(tmpl)
+		if !ok {
+			return marshalUnescaped(cur)
+		}
+		var buf bytes.Buffer
+		buf.WriteByte('{')
+		written := make(map[string]bool, len(cur))
+		first := true
+
+		emit := func(k string, sub json.RawMessage) error {
+			val, present := cur[k]
+			if !present {
+				return nil
+			}
+			if !first {
+				buf.WriteByte(',')
+			}
+			first = false
+			key, err := marshalUnescaped(k)
+			if err != nil {
+				return err
+			}
+			buf.Write(key)
+			buf.WriteByte(':')
+
+			var enc []byte
+			if sub != nil {
+				enc, err = marshalOrdered(sub, val)
+			} else {
+				enc, err = marshalUnescaped(val)
+			}
+			if err != nil {
+				return err
+			}
+			buf.Write(enc)
+			written[k] = true
+			return nil
+		}
+
+		for _, k := range order {
+			if err := emit(k, fields[k]); err != nil {
+				return nil, err
+			}
+		}
+		// Anything the caller added since the file was read.
+		added := make([]string, 0, len(cur))
+		for k := range cur {
+			if !written[k] {
+				added = append(added, k)
+			}
+		}
+		sort.Strings(added)
+		for _, k := range added {
+			if err := emit(k, nil); err != nil {
+				return nil, err
+			}
+		}
+		buf.WriteByte('}')
+		return buf.Bytes(), nil
+
+	case []any:
+		var elems []json.RawMessage
+		if err := json.Unmarshal(tmpl, &elems); err != nil {
+			return marshalUnescaped(cur)
+		}
+		var buf bytes.Buffer
+		buf.WriteByte('[')
+		for i, e := range cur {
+			if i > 0 {
+				buf.WriteByte(',')
+			}
+			var enc []byte
+			var err error
+			if i < len(elems) {
+				enc, err = marshalOrdered(elems[i], e)
+			} else {
+				enc, err = marshalUnescaped(e)
+			}
+			if err != nil {
+				return nil, err
+			}
+			buf.Write(enc)
+		}
+		buf.WriteByte(']')
+		return buf.Bytes(), nil
+
+	default:
+		return marshalUnescaped(v)
+	}
+}
+
+// objectFields reads a JSON object's keys in source order along with each
+// value's raw bytes. It reports false when raw is not an object.
+func objectFields(raw json.RawMessage) ([]string, map[string]json.RawMessage, bool) {
+	dec := json.NewDecoder(bytes.NewReader(raw))
+	tok, err := dec.Token()
+	if err != nil {
+		return nil, nil, false
+	}
+	if d, ok := tok.(json.Delim); !ok || d != '{' {
+		return nil, nil, false
+	}
+
+	var order []string
+	fields := map[string]json.RawMessage{}
+	for dec.More() {
+		keyTok, err := dec.Token()
+		if err != nil {
+			return nil, nil, false
+		}
+		key, ok := keyTok.(string)
+		if !ok {
+			return nil, nil, false
+		}
+		var val json.RawMessage
+		if err := dec.Decode(&val); err != nil {
+			return nil, nil, false
+		}
+		// A duplicate key in the source would otherwise be emitted twice.
+		if _, seen := fields[key]; !seen {
+			order = append(order, key)
+		}
+		fields[key] = val
+	}
+	return order, fields, true
+}
+
+// marshalUnescaped encodes without Go's default HTML escaping.
+//
+// encoding/json turns <, > and & into < and friends. JSON.stringify does
+// not, so leaving it on would make every flow containing an HTML template or a
+// URL query differ from what Node-RED writes — and would rewrite those escapes
+// into the customer's file on the first save.
+func marshalUnescaped(v any) ([]byte, error) {
+	var buf bytes.Buffer
+	enc := json.NewEncoder(&buf)
+	enc.SetEscapeHTML(false)
+	if err := enc.Encode(v); err != nil {
+		return nil, err
+	}
+	return bytes.TrimRight(buf.Bytes(), "\n"), nil
+}
+
+// MarshalJSON writes the flow file back as a compact v1 array, in original
+// entry order and with each entry's original key order.
+func (f *Flows) MarshalJSON() ([]byte, error) {
+	return f.render("")
+}
+
+// Marshal renders the flow file the way Node-RED's flowFilePretty does: a v1
+// array indented with four spaces.
+//
+// A file that was read and not modified comes back out byte for byte. Entries
+// that were changed are re-encoded; everything else keeps the bytes it arrived
+// with, so a deploy diffs only the nodes actually touched rather than reshuffling
+// the whole file.
 func (f *Flows) Marshal() ([]byte, error) {
-	out := make([]map[string]any, 0, len(f.Order))
-	for _, id := range f.Order {
-		if raw, ok := f.Entry(id); ok {
-			out = append(out, raw)
+	return f.render(FlowFileIndent)
+}
+
+// render assembles the array. indent == "" produces compact output.
+//
+// json.Compact and json.Indent are byte-level transforms — they normalise
+// whitespace without reordering keys — which is what lets an entry's original
+// bytes be re-indented into the output without losing the order they carry.
+func (f *Flows) render(indent string) ([]byte, error) {
+	if len(f.Order) == 0 {
+		return []byte("[]"), nil
+	}
+
+	var out bytes.Buffer
+	if indent == "" {
+		out.WriteByte('[')
+	} else {
+		out.WriteString("[\n")
+	}
+
+	for i, id := range f.Order {
+		eb, err := f.entryBytes(id)
+		if err != nil {
+			return nil, err
+		}
+
+		var compact bytes.Buffer
+		if err := json.Compact(&compact, eb); err != nil {
+			return nil, fmt.Errorf("compacting entry %s: %w", id, err)
+		}
+
+		if indent == "" {
+			out.Write(compact.Bytes())
+		} else {
+			var indented bytes.Buffer
+			if err := json.Indent(&indented, compact.Bytes(), indent, indent); err != nil {
+				return nil, fmt.Errorf("indenting entry %s: %w", id, err)
+			}
+			out.WriteString(indent)
+			out.Write(indented.Bytes())
+		}
+
+		if i < len(f.Order)-1 {
+			out.WriteByte(',')
+		}
+		if indent != "" {
+			out.WriteByte('\n')
 		}
 	}
-	return json.MarshalIndent(out, "", "    ")
+
+	out.WriteByte(']')
+	return out.Bytes(), nil
 }
+
+// Touch marks an entry as modified, forcing it to be re-encoded on the next
+// save even if it currently deep-equals what was read.
+//
+// Needed only when a caller has mutated a nested value in place and wants the
+// canonical form written back. Ordinary edits are detected automatically.
+func (f *Flows) Touch(id string) { delete(f.orig, id) }
 
 // StripCredentials removes inline credential objects from every node and returns
 // them keyed by node id.

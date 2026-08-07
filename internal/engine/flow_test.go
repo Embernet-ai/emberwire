@@ -234,10 +234,151 @@ func TestRoundTripPreservesUnknownProperties(t *testing.T) {
 	}
 }
 
+func TestRoundTripIsByteIdentical(t *testing.T) {
+	// The real bar: a file written by Node-RED, loaded and saved unchanged,
+	// comes back out byte for byte.
+	//
+	// Go makes this harder than JavaScript does. A JS object preserves key
+	// insertion order, so JSON.parse followed by JSON.stringify round-trips for
+	// free; a Go map has no order and encoding/json emits keys sorted. Rather
+	// than force an order-preserving map through every read path, each entry's
+	// original bytes are kept and re-emitted when the parsed form is unchanged.
+	path := filepath.Join("..", "..", "testdata", "flows_nodered_format.json")
+	orig, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatalf("reading %s: %v", path, err)
+	}
+	// The fixture is stored with a trailing newline, which the store appends
+	// separately; compare against the document itself.
+	orig = []byte(strings.TrimRight(string(orig), "\n"))
+
+	f, err := ParseFlows(orig)
+	if err != nil {
+		t.Fatalf("ParseFlows: %v", err)
+	}
+	out, err := f.Marshal()
+	if err != nil {
+		t.Fatalf("Marshal: %v", err)
+	}
+
+	if string(out) != string(orig) {
+		wantCtx, gotCtx := firstDiffContext(string(orig), string(out))
+		t.Errorf("round-trip is not byte-identical.\n--- want ---\n%s\n--- got ---\n%s", wantCtx, gotCtx)
+	}
+}
+
+func TestRoundTripPreservesKeyOrderNotAlphabetical(t *testing.T) {
+	// Guards the mechanism directly. Sorted output would put "broker" before
+	// "name" and "type"; the source order is id, type, name, broker.
+	path := filepath.Join("..", "..", "testdata", "flows_nodered_format.json")
+	data, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatalf("reading fixture: %v", err)
+	}
+	f, err := ParseFlows(data)
+	if err != nil {
+		t.Fatalf("ParseFlows: %v", err)
+	}
+	out, err := f.Marshal()
+	if err != nil {
+		t.Fatalf("Marshal: %v", err)
+	}
+
+	idPos := strings.Index(string(out), `"id": "cfg0broker000001"`)
+	if idPos < 0 {
+		t.Fatal("config node not found in output")
+	}
+	section := string(out)[idPos:]
+	typePos := strings.Index(section, `"type"`)
+	namePos := strings.Index(section, `"name"`)
+	brokerPos := strings.Index(section, `"broker"`)
+	if typePos < 0 || namePos < 0 || brokerPos < 0 {
+		t.Fatal("expected keys missing from the config node")
+	}
+	if !(typePos < namePos && namePos < brokerPos) {
+		t.Error("keys were reordered; the original insertion order was not preserved")
+	}
+}
+
+func TestRoundTripDoesNotRewriteHTMLEscapes(t *testing.T) {
+	// encoding/json escapes <, > and & by default. JSON.stringify does not, so
+	// leaving it on would rewrite every template and URL in a customer's file
+	// on the first save.
+	path := filepath.Join("..", "..", "testdata", "flows_nodered_format.json")
+	data, _ := os.ReadFile(path)
+	f, err := ParseFlows(data)
+	if err != nil {
+		t.Fatalf("ParseFlows: %v", err)
+	}
+	// Force a re-encode of the template node so the escaping path is exercised
+	// rather than the original bytes being handed back.
+	f.Touch("c3c3c3c3c3c3c3c3")
+
+	out, err := f.Marshal()
+	if err != nil {
+		t.Fatalf("Marshal: %v", err)
+	}
+	// The escapes are the literal six-character sequences encoding/json emits,
+	// not the characters themselves — those appear legitimately in the template.
+	for name, esc := range map[string]string{
+		"less-than": "\\u003c", "greater-than": "\\u003e", "ampersand": "\\u0026",
+	} {
+		if strings.Contains(string(out), esc) {
+			t.Errorf("output contains Go's %s HTML escape %q; JSON.stringify would not write that", name, esc)
+		}
+	}
+	if !strings.Contains(string(out), "<p>Reading:") {
+		t.Error("the template body was not preserved verbatim")
+	}
+}
+
+func TestOnlyChangedEntriesAreRewritten(t *testing.T) {
+	// The practical payoff: a deploy diffs the nodes actually touched rather
+	// than reshuffling the whole file. Everything else keeps the bytes it
+	// arrived with.
+	path := filepath.Join("..", "..", "testdata", "flows_nodered_format.json")
+	data, _ := os.ReadFile(path)
+	f, err := ParseFlows(data)
+	if err != nil {
+		t.Fatalf("ParseFlows: %v", err)
+	}
+
+	f.Nodes["a1a1a1a1a1a1a1a1"].Raw["topic"] = "press/01/scaled"
+
+	out, err := f.Marshal()
+	if err != nil {
+		t.Fatalf("Marshal: %v", err)
+	}
+
+	if !strings.Contains(string(out), `"press/01/scaled"`) {
+		t.Error("the edit was not written")
+	}
+	// The untouched node with unknown properties keeps its exact source form,
+	// including the nested object's layout.
+	if !strings.Contains(string(out), `"anotherOne": "must survive a save"`) {
+		t.Error("an untouched entry was not preserved")
+	}
+
+	origLines := strings.Split(strings.TrimRight(string(data), "\n"), "\n")
+	newLines := strings.Split(string(out), "\n")
+	if len(origLines) != len(newLines) {
+		t.Fatalf("line count changed from %d to %d; more than the edited entry moved",
+			len(origLines), len(newLines))
+	}
+	changed := 0
+	for i := range origLines {
+		if origLines[i] != newLines[i] {
+			changed++
+		}
+	}
+	if changed != 1 {
+		t.Errorf("%d lines differ after editing one property, want 1", changed)
+	}
+}
+
 func TestRoundTripIsStableAcrossSaves(t *testing.T) {
-	// Key order is not preserved (Go maps are unordered and encoding/json sorts
-	// keys), so the first save after a Node-RED import reorders keys once. What
-	// must hold is that every save after that is byte-identical, or the flow
+	// A hand-formatted file — inline objects, mixed layout — is normalised once
+	// on the first save. Every save after that must be identical, or the flow
 	// file churns in git and on the PVC on every deploy.
 	f, _ := loadKitchenSink(t)
 
@@ -256,6 +397,27 @@ func TestRoundTripIsStableAcrossSaves(t *testing.T) {
 	if string(first) != string(second) {
 		t.Error("save output is not stable across a save/load/save cycle")
 	}
+}
+
+// firstDiffContext returns the two strings trimmed to the region around their
+// first difference, so a failure shows the mismatch rather than two whole files.
+func firstDiffContext(want, got string) (string, string) {
+	i := 0
+	for i < len(want) && i < len(got) && want[i] == got[i] {
+		i++
+	}
+	lo := i - 120
+	if lo < 0 {
+		lo = 0
+	}
+	hi := func(s string) int {
+		h := i + 120
+		if h > len(s) {
+			h = len(s)
+		}
+		return h
+	}
+	return want[lo:hi(want)], got[lo:hi(got)]
 }
 
 func TestStripCredentials(t *testing.T) {
