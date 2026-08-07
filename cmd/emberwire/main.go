@@ -17,9 +17,10 @@ import (
 
 	"github.com/embernet-ai/emberwire/internal/api"
 	"github.com/embernet-ai/emberwire/internal/config"
+	"github.com/embernet-ai/emberwire/internal/discover"
 	"github.com/embernet-ai/emberwire/internal/engine"
 	"github.com/embernet-ai/emberwire/internal/node"
-	_ "github.com/embernet-ai/emberwire/internal/nodes" // registers the built-in palette
+	"github.com/embernet-ai/emberwire/internal/nodes" // registers the built-in palette
 	"github.com/embernet-ai/emberwire/internal/runtime"
 	"github.com/embernet-ai/emberwire/internal/store"
 )
@@ -77,6 +78,18 @@ func cmdServe(args []string) error {
 
 	log := newLogger(cfg.Logging)
 	log.Info("starting", "version", version, "addr", cfg.Addr(), "dataDir", cfg.Data.Dir)
+
+	// Install the discovery scope before any flow starts, so a scan node can
+	// never run against an unbounded scope even for one message.
+	scope, err := discover.NewScope(cfg.Discovery.Enabled, cfg.Discovery.AllowedCIDRs)
+	if err != nil {
+		return fmt.Errorf("discovery: %w", err)
+	}
+	nodes.Scope = scope
+	if cfg.Discovery.Enabled {
+		log.Warn("network discovery is enabled",
+			"allowedCIDRs", strings.Join(cfg.Discovery.AllowedCIDRs, ","))
+	}
 
 	if err := os.MkdirAll(cfg.Data.Dir, 0o700); err != nil {
 		return fmt.Errorf("creating data directory %s: %w", cfg.Data.Dir, err)

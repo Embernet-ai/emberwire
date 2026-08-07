@@ -32,14 +32,14 @@ appear to work while routing on a literal string.
 
 ## Summary
 
-26 node types registered.
+28 node types registered.
 
 | Level | Count |
 |---|---|
 | full | 8 |
 | partial | 14 |
 | divergent | 0 |
-| emberwire-only | 4 |
+| emberwire-only | 6 |
 
 ## Common
 
@@ -62,6 +62,13 @@ appear to work while routing on a literal string.
 | `emberwire-influxdb` | emberwire-only | Emberwire's own InfluxDB connection, targeting the App Store's influxdb-app. |
 | `emberwire-postgres` | emberwire-only | Emberwire's own PostgreSQL connection. Targets the App Store's postgresql-app and timescale-db-pod, which share a wire protocol. |
 | `mqtt-broker` | partial | Connection, credentials, TLS, clean session, keepalive, birth and close messages are supported. Will messages and MQTT v5 properties are not implemented in this build. Ignored properties: `willTopic`, `willPayload`, `protocolVersion:5`. |
+
+## Discover
+
+| Type | Level | Notes |
+|---|---|---|
+| `netinfo` | emberwire-only | Emberwire's own node. Reports the interfaces the runtime can see, which in macvlan mode is how a flow learns its address on the OT VLAN. |
+| `scan` | emberwire-only | Emberwire's own node. Sweeps a CIDR range for OT devices and identifies Modbus and EtherNet/IP endpoints. Bounded by the discovery allowlist in the runtime configuration, not by this dialog. |
 
 ## Function
 
