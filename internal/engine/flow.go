@@ -173,8 +173,8 @@ type EnvVar struct {
 // handler closest in the group hierarchy, so the nesting is load-bearing.
 type Group struct {
 	ID    string
-	Z     string   // containing tab
-	G     string   // parent group id, for nested groups
+	Z     string // containing tab
+	G     string // parent group id, for nested groups
 	Name  string
 	Nodes []string // member node ids
 	Raw   map[string]any
