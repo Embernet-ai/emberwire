@@ -47,7 +47,7 @@ and a weak passphrase. No CVE on either. Both are real.
 | Runtime | Node.js, one event loop | Go, goroutine per node |
 | Back-pressure | none, unbounded queue | bounded inbox, four policies |
 | Message cloning | first recipient aliases the sender | every recipient gets a copy |
-| Function sandbox | `node:vm`, explicitly not a boundary | goja, plus a WASM ABI with real memory and CPU limits |
+| Function sandbox | `node:vm`, explicitly not a boundary | goja (no host bindings), plus WASM guests with a hard memory ceiling |
 | Credentials | AES-256-CTR, SHA-256 as the key | AES-256-GCM, Argon2id |
 | Context API | get, set | get, set, **CompareAndSwap, Increment, Update** |
 | Flow file writes | in place | temp, fsync, rename, fsync dir, three backups deep |
@@ -85,26 +85,35 @@ with zero lost updates.
 
 Being straight about this, the way the EmberRTOS README is.
 
-**Done and tested.** The engine core: message model, property expressions, the v1
-flow parser, the scheduler with back-pressure, Catch/Status/Complete routing with
-the group-distance rule, context stores, survivable storage, and the first wave of
-the palette. Five packages, comprehensive tests, everything green.
+**Runs.** `emberwire` starts, serves the API and the editor, loads flows off the
+PVC and moves messages. The chart deploys it three ways. 30 node types.
 
-**Not done yet.** The editor. The admin API and the binary — you cannot run this
-yet, only import it as a library. The goja and WASM function hosts. Network and
-parser nodes. The discovery node family. The Helm chart, the image, and the
-benchmark harness.
+**Done and tested.** The engine — message model, property expressions, the v1
+flow parser, the scheduler with back-pressure, Catch/Status/Complete with the
+group-distance rule, context stores, survivable storage. The admin API, the
+websocket, and the binary. The editor: canvas, wiring, descriptor-driven edit
+dialogs, deploy. Both function hosts. Database export, MQTT, parsers, network
+discovery. The Helm chart with all three network modes, the Dockerfile and the
+publish workflows.
 
-**Not benchmarked against Node-RED yet.** The numbers above are Emberwire
-measured on my box. The Node-RED comparison numbers do not exist yet because I
-have not run the harness, and the RSS and throughput figures floating around the
-forums are anecdotes with no controlled measurement behind them. They are not
-going in here until I have produced them myself on the same hardware with the
-same flow.
+**Verified against real infrastructure**, not just against my own encoders:
+MQTT, InfluxDB 2.7 and PostgreSQL 16 in podman. The InfluxDB tag value comes
+back out of a real database as `press 01,west`, space and comma intact, which
+is the escaping bug that would otherwise fragment a series silently.
 
-**The race detector has not run on my machine.** It needs cgo and there is no gcc
-on this Windows box. CI runs it on ubuntu, which is what the binary actually ships
-on.
+**Race detector: clean**, every package, on Linux with cgo.
+
+**Not done yet.** Prometheus metrics beyond the counters the API already
+exposes. The `template`, `delay`, `trigger` and `exec` nodes. HTTP In/Request,
+WebSocket, TCP and UDP nodes. Subflow execution — subflows parse and round-trip
+but instances do not run yet. Registering the chart in the dashboard's
+`HelmRepoURLs`.
+
+**Still not benchmarked against Node-RED.** Every number in this README is
+Emberwire measured on my box. The comparison numbers do not exist because I have
+not run the harness, and the RSS and throughput figures on the forums are
+anecdotes with no controlled measurement behind them. They go in when I produce
+them myself, on the same hardware, with the same flow, and not before.
 
 ## Compatibility
 
