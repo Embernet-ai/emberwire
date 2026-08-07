@@ -955,6 +955,83 @@ func TestStopDrainsQueuedMessagesAndClosesNodes(t *testing.T) {
 	}
 }
 
+// deferNode holds every message it receives until its context is cancelled,
+// then forwards them. It is the shape of the Delay and Trigger nodes: an empty
+// inbox that nevertheless still has work outstanding.
+type deferNode struct {
+	mu   sync.Mutex
+	held []*engine.Msg
+}
+
+func (d *deferNode) Receive(_ context.Context, m *engine.Msg, _ node.Emitter) error {
+	d.mu.Lock()
+	defer d.mu.Unlock()
+	d.held = append(d.held, m)
+	return nil
+}
+
+func (d *deferNode) Pending() int {
+	d.mu.Lock()
+	defer d.mu.Unlock()
+	return len(d.held)
+}
+
+func (d *deferNode) Start(ctx context.Context, out node.Emitter) error {
+	go func() {
+		<-ctx.Done()
+		d.mu.Lock()
+		held := d.held
+		d.held = nil
+		d.mu.Unlock()
+		for _, m := range held {
+			out.Send(0, m)
+		}
+	}()
+	return nil
+}
+
+// TestStopWaitsForDeferredWork covers the reason runner.idle consults
+// node.Deferrer.
+//
+// A Delay node's inbox is empty the instant it accepts a message — the message
+// is on a timer, not in the queue. Judging the graph quiet on inbox depth alone
+// would tear the runtime down around messages that are still owed a delivery,
+// which is exactly what Node-RED does on redeploy: whatever a Delay node was
+// holding is gone, with nothing said about it.
+func TestStopWaitsForDeferredWork(t *testing.T) {
+	tr := newTestRegistry()
+	held := &deferNode{}
+	sink := &sinkNode{}
+	tr.add("defer", 1, 1, func(string) node.Node { return held })
+	tr.add("sink", 1, 0, func(string) node.Node { return sink })
+
+	flows := mustFlows(t, `[
+        {"id":"t1","type":"tab","label":"T"},
+        {"id":"d","type":"defer","z":"t1","x":1,"y":1,"wires":[["s"]]},
+        {"id":"s","type":"sink","z":"t1","x":2,"y":1,"wires":[]}
+    ]`)
+
+	rt := New(tr.Registry, flows, Options{})
+	drain(rt)
+	rt.Start(context.Background())
+
+	const n = 20
+	for i := 0; i < n; i++ {
+		rt.Inject("d", engine.NewMsgWithPayload(float64(i)))
+	}
+	waitFor(t, "the deferring node to take every message", func() bool {
+		return held.Pending() == n
+	})
+
+	if errs := rt.Stop(context.Background()); len(errs) > 0 {
+		t.Errorf("Stop errors: %v", errs)
+	}
+	if got := sink.count(); got != n {
+		t.Errorf("sink received %d of %d deferred messages; the shutdown ran ahead of "+
+			"work that was outstanding on a timer", got, n)
+	}
+}
+
 func TestPerNodeOverflowOverride(t *testing.T) {
 	// A known-bursty branch can be given its own policy without changing the
 	// whole runtime.

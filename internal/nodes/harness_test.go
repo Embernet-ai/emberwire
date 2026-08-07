@@ -219,6 +219,14 @@ func build(t *testing.T, typ, configJSON string, svc node.Services) node.Node {
 	return n
 }
 
+// jsonConfig renders a config map as the JSON fragment build takes. Worth having
+// whenever a property value is multi-line or full of braces, where escaping it
+// into a Go string literal by hand is how a test ends up asserting on a typo.
+func jsonConfig(m map[string]any) (string, error) {
+	b, err := json.Marshal(m)
+	return string(b), err
+}
+
 // buildErr expects construction to fail, returning the error.
 func buildErr(t *testing.T, typ, configJSON string, svc node.Services) error {
 	t.Helper()

@@ -523,6 +523,24 @@ type Starter interface {
 	Start(ctx context.Context, out Emitter) error
 }
 
+// Deferrer is implemented by nodes that hold messages they intend to emit later
+// on a timer rather than only in response to an input — Delay and Trigger are
+// the two in the built-in palette.
+//
+// The scheduler consults it before deciding the graph has gone quiet, so a
+// redeploy waits for deferred work to land instead of discarding it. Node-RED
+// has no equivalent: a redeploy throws away whatever is sitting in a Delay
+// node's queue, and the messages are simply gone.
+//
+// A node that would otherwise hold work for a long time should release it early
+// when the context it was started with is cancelled. Cancellation happens before
+// the scheduler starts waiting, so a flush there is observed and the shutdown
+// does not stall until the close timeout.
+type Deferrer interface {
+	// Pending reports how many messages are held for later delivery.
+	Pending() int
+}
+
 // Closer is implemented by nodes holding resources that must be released on
 // redeploy or shutdown.
 //

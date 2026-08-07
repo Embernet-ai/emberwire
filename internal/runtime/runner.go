@@ -164,6 +164,11 @@ type runner struct {
 	node node.Node
 	rt   *Runtime
 
+	// deferred is set when the node holds messages on a timer. It is read
+	// during quiesce so that a redeploy waits for a Delay node's queue rather
+	// than dropping it. nil for the nodes that never defer, which is most.
+	deferred node.Deferrer
+
 	inbox    chan delivery
 	capacity int
 	overflow OverflowPolicy
@@ -334,9 +339,16 @@ func (r *runner) handle(ctx context.Context, d delivery) {
 // pointer, so handing it out costs nothing and it is safe to keep.
 func (r *runner) emitter() node.Emitter { return emitter{r: r} }
 
-// idle reports whether the node has nothing queued and nothing in a handler.
+// idle reports whether the node has nothing queued, nothing in a handler and
+// nothing held back on a timer.
+//
+// The last of those is the reason a Delay node's contents survive a redeploy:
+// an empty inbox is not the same as no work outstanding.
 func (r *runner) idle() bool {
-	return len(r.inbox) == 0 && r.inFlight.Load() == 0
+	if len(r.inbox) != 0 || r.inFlight.Load() != 0 {
+		return false
+	}
+	return r.deferred == nil || r.deferred.Pending() == 0
 }
 
 // Snapshot copies the runner's counters.

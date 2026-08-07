@@ -263,7 +263,7 @@ func (rt *Runtime) newRunner(n *engine.Node, inst node.Node) *runner {
 		overflow = p
 	}
 
-	return &runner{
+	r := &runner{
 		id:       n.ID,
 		typ:      n.Type,
 		name:     n.Name,
@@ -277,6 +277,10 @@ func (rt *Runtime) newRunner(n *engine.Node, inst node.Node) *runner {
 		quit:     make(chan struct{}),
 		done:     make(chan struct{}),
 	}
+	if d, ok := inst.(node.Deferrer); ok {
+		r.deferred = d
+	}
+	return r
 }
 
 // wire resolves every node's wires from ids to runner pointers. Wires pointing
