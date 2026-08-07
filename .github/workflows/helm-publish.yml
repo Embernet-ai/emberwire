@@ -1,0 +1,100 @@
+name: Publish Helm Chart
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'charts/**'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pages: write
+
+jobs:
+  lint:
+    name: Lint
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: azure/setup-helm@v4
+
+      - name: helm lint
+        run: helm lint charts/emberwire-app
+
+      - name: Store labels are on the pod AND the Service
+        # THE BIG FIVE, twice. Labels on the pod alone make the app show in node
+        # detail and stay invisible in the Running Apps catalogue, which is the
+        # most common silent App Store failure and is not visible from the chart.
+        run: |
+          COUNT=$(helm template t charts/emberwire-app | grep -c 'embernet\.ai/store-app\|embernet\.ai/gui-type\|embernet\.ai/app-name\|embernet\.ai/gui-port\|embernet\.ai/chart-name')
+          echo "store labels rendered: $COUNT"
+          if [ "$COUNT" -ne 10 ]; then
+            echo "::error::expected 10 store labels (5 on the pod, 5 on the Service), found $COUNT"
+            exit 1
+          fi
+
+      - name: Chart name must not contain "pod"
+        # Standing App Store rule. The dashboard carries a deny-list for the old
+        # -pod names precisely because renaming one after publication leaves a
+        # duplicate card in the catalogue forever.
+        run: |
+          NAME=$(grep '^name:' charts/emberwire-app/Chart.yaml | awk '{print $2}')
+          case "$NAME" in
+            *pod*) echo "::error::chart name '$NAME' contains 'pod'"; exit 1 ;;
+            *) echo "chart name: $NAME" ;;
+          esac
+
+      - name: Every network mode renders
+        run: |
+          helm template t charts/emberwire-app >/dev/null
+          helm template t charts/emberwire-app --set network.mode=host >/dev/null
+          helm template t charts/emberwire-app \
+            --set network.mode=macvlan \
+            --set network.macvlan.master=eth1 \
+            --set network.macvlan.ipam.subnet=10.20.30.0/24 >/dev/null
+
+      - name: Bad configurations are refused
+        # A guard that does not fire is worse than no guard: it reads as
+        # validated. Assert each one actually fails.
+        run: |
+          fails() {
+            if helm template t charts/emberwire-app "$@" >/dev/null 2>&1; then
+              echo "::error::expected this to be rejected: $*"
+              exit 1
+            fi
+          }
+          fails --set network.mode=nonsense
+          fails --set network.mode=macvlan --set network.macvlan.master=eth1
+          fails --set discovery.enabled=true
+
+  publish:
+    name: Publish
+    needs: lint
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: azure/setup-helm@v4
+
+      - name: Package
+        run: |
+          mkdir -p .deploy
+          helm package charts/emberwire-app -d .deploy
+
+      - name: Build the index
+        # Current-version-only: do NOT merge the live index. Merging carries
+        # forward stale versions whose tarballs may 404, and a chart renamed in
+        # place gets resurrected under its old name forever. Prior versions
+        # predate the App Store contract and must not be resolvable.
+        run: |
+          helm repo index .deploy --url https://embernet-ai.github.io/emberwire/
+
+      - uses: peaceiris/actions-gh-pages@v4
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: .deploy
+          keep_files: true

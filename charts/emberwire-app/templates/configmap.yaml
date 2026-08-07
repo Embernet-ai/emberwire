@@ -1,0 +1,53 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "emberwire-app.configMapName" . }}
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "emberwire-app.labels" . | nindent 4 }}
+data:
+  # Declarative, and validated at startup with unknown keys rejected. Node-RED's
+  # settings.js is executable JavaScript, which is why it cannot be templated
+  # from a ConfigMap and reviewed the way this can.
+  #
+  # Secrets are NOT here — the admin password hash and the credential secret
+  # come from the Secret via environment variables, which override the file.
+  config.yaml: |
+    server:
+      host: 0.0.0.0
+      port: {{ .Values.service.targetPort }}
+      adminRoot: /
+      maxRequestBytes: 33554432
+
+    data:
+      dir: {{ .Values.persistence.mountPath }}
+      flowFile: flows.json
+      credentialsFile: credentials.json
+      backupGenerations: 3
+
+    auth:
+      enabled: {{ .Values.auth.enabled }}
+      sessionTTL: {{ .Values.auth.sessionTTL }}
+
+    runtime:
+      inboxCapacity: {{ .Values.runtime.inboxCapacity }}
+      overflow: {{ .Values.runtime.overflow }}
+      blockTimeout: {{ .Values.runtime.blockTimeout }}
+      closeTimeout: {{ .Values.runtime.closeTimeout }}
+
+    discovery:
+      enabled: {{ .Values.discovery.enabled }}
+      allowedCIDRs:
+        {{- if .Values.discovery.allowedCIDRs }}
+        {{- toYaml .Values.discovery.allowedCIDRs | nindent 8 }}
+        {{- else }}
+        []
+        {{- end }}
+
+    logging:
+      level: {{ .Values.logging.level }}
+      format: {{ .Values.logging.format }}
+
+    metrics:
+      enabled: {{ .Values.metrics.enabled }}
+      path: {{ .Values.metrics.path }}

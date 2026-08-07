@@ -21,6 +21,7 @@ import (
 	"github.com/embernet-ai/emberwire/internal/node"
 	"github.com/embernet-ai/emberwire/internal/runtime"
 	"github.com/embernet-ai/emberwire/internal/store"
+	"github.com/embernet-ai/emberwire/web"
 )
 
 // Permissions the API checks. Mirrors Node-RED's granular scheme so a read-only
@@ -121,6 +122,15 @@ func (s *Server) routes() {
 	s.mux.Handle("GET "+s.path("/runtime/stats"), s.auth(PermStatusRead, s.handleStats))
 	s.mux.Handle("POST "+s.path("/inject/{id}"), s.auth(PermInject, s.handleInject))
 	s.mux.Handle("GET "+s.path("/comms"), s.auth(PermStatusRead, s.handleComms))
+
+	// The editor. Unauthenticated on purpose: it is a static bundle that renders
+	// a login form, and every call it makes afterwards carries a token. Putting
+	// auth in front of the login page itself would be a loop.
+	//
+	// Registered last and on the bare prefix, so it only catches what the API
+	// routes above did not.
+	editorRoot := s.root + "/"
+	s.mux.Handle("GET "+editorRoot, web.Handler(s.root))
 }
 
 // ---------------------------------------------------------------------------

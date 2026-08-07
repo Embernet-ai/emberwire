@@ -1,0 +1,187 @@
+{{- include "emberwire-app.validateNetwork" . -}}
+{{- $mode := .Values.network.mode | default "cluster" -}}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "emberwire-app.fullname" . }}
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "emberwire-app.labels" . | nindent 4 }}
+spec:
+  replicas: {{ .Values.replicaCount }}
+  # Recreate, not RollingUpdate. Two Emberwire pods sharing a
+  # ReadWriteOnce PVC cannot both mount it, and if they could they would both
+  # subscribe to the same MQTT topics and both write to the same historian.
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      {{- include "emberwire-app.selectorLabels" . | nindent 6 }}
+  template:
+    metadata:
+      annotations:
+        # Roll the pod when the config or the secret changes, otherwise a
+        # values change appears to apply and the running process never sees it.
+        checksum/config: {{ include (print $.Template.BasePath "/configmap.yaml") . | sha256sum }}
+        checksum/secret: {{ include (print $.Template.BasePath "/secret.yaml") . | sha256sum }}
+        {{- if eq $mode "macvlan" }}
+        k8s.v1.cni.cncf.io/networks: {{ include "emberwire-app.macvlanNetwork" . | quote }}
+        {{- end }}
+        {{- with .Values.podAnnotations }}
+        {{- toYaml . | nindent 8 }}
+        {{- end }}
+      labels:
+        {{- include "emberwire-app.selectorLabels" . | nindent 8 }}
+        {{- include "emberwire-app.storeLabels" . | nindent 8 }}
+        {{- include "emberwire-app.tenantLabels" . | nindent 8 }}
+        {{- with .Values.podLabels }}
+        {{- toYaml . | nindent 8 }}
+        {{- end }}
+    spec:
+      {{- with .Values.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      serviceAccountName: {{ include "emberwire-app.serviceAccountName" . }}
+
+      {{- if eq $mode "host" }}
+      hostNetwork: true
+      dnsPolicy: ClusterFirstWithHostNet
+      {{- else }}
+      dnsPolicy: ClusterFirst
+      {{- end }}
+
+      securityContext:
+        runAsNonRoot: {{ .Values.securityContext.runAsNonRoot }}
+        runAsUser: {{ .Values.securityContext.runAsUser }}
+        runAsGroup: {{ .Values.securityContext.runAsGroup }}
+        fsGroup: {{ .Values.securityContext.fsGroup }}
+        {{- with .Values.securityContext.seccompProfile }}
+        seccompProfile:
+          {{- toYaml . | nindent 10 }}
+        {{- end }}
+
+      containers:
+        - name: emberwire
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag | default .Chart.AppVersion }}"
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+
+          args:
+            - -config
+            - /etc/emberwire/config.yaml
+
+          securityContext:
+            allowPrivilegeEscalation: {{ .Values.securityContext.allowPrivilegeEscalation }}
+            readOnlyRootFilesystem: {{ .Values.securityContext.readOnlyRootFilesystem }}
+            capabilities:
+              drop:
+                - ALL
+              {{- if .Values.discovery.enabled }}
+              # Raw sockets for ARP sweeps and protocol discovery. Without
+              # these the scan nodes degrade to TCP connect probing rather
+              # than failing, so this is an enhancement and not a hard need.
+              add:
+                {{- toYaml .Values.discovery.addCapabilities | nindent 16 }}
+              {{- end }}
+
+          ports:
+            - name: http
+              containerPort: {{ .Values.service.targetPort }}
+              protocol: TCP
+              {{- if eq $mode "host" }}
+              hostPort: {{ .Values.network.hostPort }}
+              {{- end }}
+            {{- range .Values.network.extraPorts }}
+            - name: {{ .name }}
+              containerPort: {{ .containerPort }}
+              protocol: {{ .protocol | default "TCP" }}
+              {{- if and (eq $mode "host") .hostPort }}
+              hostPort: {{ .hostPort }}
+              {{- end }}
+            {{- end }}
+
+          env:
+            - name: EMBERWIRE_ADMIN_USER
+              value: {{ .Values.auth.username | quote }}
+            - name: EMBERWIRE_ADMIN_PASSWORD_HASH
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "emberwire-app.secretName" . }}
+                  key: admin-password-hash
+            - name: EMBERWIRE_CREDENTIAL_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "emberwire-app.secretName" . }}
+                  key: credential-secret
+            {{- with .Values.env }}
+            {{- toYaml . | nindent 12 }}
+            {{- end }}
+          {{- with .Values.envFrom }}
+          envFrom:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+
+          {{- if .Values.probes.liveness.enabled }}
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: {{ .Values.service.targetPort }}
+            initialDelaySeconds: {{ .Values.probes.liveness.initialDelaySeconds }}
+            periodSeconds: {{ .Values.probes.liveness.periodSeconds }}
+            timeoutSeconds: {{ .Values.probes.liveness.timeoutSeconds }}
+            failureThreshold: {{ .Values.probes.liveness.failureThreshold }}
+          {{- end }}
+          {{- if .Values.probes.readiness.enabled }}
+          readinessProbe:
+            httpGet:
+              path: /ready
+              port: {{ .Values.service.targetPort }}
+            initialDelaySeconds: {{ .Values.probes.readiness.initialDelaySeconds }}
+            periodSeconds: {{ .Values.probes.readiness.periodSeconds }}
+            timeoutSeconds: {{ .Values.probes.readiness.timeoutSeconds }}
+            failureThreshold: {{ .Values.probes.readiness.failureThreshold }}
+          {{- end }}
+
+          resources:
+            {{- include "emberwire-app.resources" . | nindent 12 }}
+
+          volumeMounts:
+            - name: config
+              mountPath: /etc/emberwire
+              readOnly: true
+            - name: data
+              mountPath: {{ .Values.persistence.mountPath }}
+            # readOnlyRootFilesystem is on, so anything that needs a writable
+            # path needs a volume. The binary writes only to the data dir, but
+            # /tmp is cheap insurance for a library that does not.
+            - name: tmp
+              mountPath: /tmp
+
+      volumes:
+        - name: config
+          configMap:
+            name: {{ include "emberwire-app.configMapName" . }}
+        - name: tmp
+          emptyDir: {}
+        - name: data
+        {{- if .Values.persistence.enabled }}
+          persistentVolumeClaim:
+            claimName: {{ include "emberwire-app.pvcName" . }}
+        {{- else }}
+          # No PVC: flows and credentials are lost on restart. Acceptable for a
+          # throwaway instance, never for one holding a line's logic.
+          emptyDir: {}
+        {{- end }}
+
+      {{- with .Values.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}

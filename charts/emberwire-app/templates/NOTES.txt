@@ -1,0 +1,46 @@
+Emberwire {{ .Chart.AppVersion }} — {{ include "emberwire-app.fullname" . }}
+
+Network mode: {{ .Values.network.mode | default "cluster" }}
+{{- if eq (.Values.network.mode | default "cluster") "macvlan" }}
+  Attached to {{ include "emberwire-app.macvlanNetwork" . }} on {{ .Values.network.macvlan.master }}.
+  The pod has its own MAC and IP on that VLAN, so it can see the OT segment
+  directly and several instances can run on one node without colliding.
+{{- else if eq (.Values.network.mode | default "cluster") "host" }}
+  Host network, listening on port {{ .Values.network.hostPort }} of the node.
+  Only one instance per node can bind that port.
+{{- else }}
+  ClusterIP only. Multi-instance safe. The runtime sees what the cluster routes
+  to it — switch to host or macvlan mode if flows need to reach an OT segment.
+{{- end }}
+
+Get the admin password:
+
+  kubectl get secret -n {{ .Release.Namespace }} {{ include "emberwire-app.secretName" . }} \
+    -o jsonpath='{.data.admin-password}' | base64 -d
+
+Log in:
+
+  curl -sX POST http://{{ include "emberwire-app.fullname" . }}.{{ .Release.Namespace }}.svc.cluster.local:{{ .Values.service.port }}/auth/token \
+    -H 'Content-Type: application/json' \
+    -d '{"username":"{{ .Values.auth.username }}","password":"<password>"}'
+
+{{- if not .Values.persistence.enabled }}
+
+WARNING: persistence is disabled. Flows and credentials are lost when the pod
+restarts. Do not run a line on this.
+{{- end }}
+{{- if not .Values.auth.enabled }}
+
+WARNING: authentication is disabled. Anyone who can reach this port can deploy
+a flow, and a flow can run commands.
+{{- end }}
+{{- if .Values.discovery.enabled }}
+
+Discovery is enabled and limited to:
+{{- range .Values.discovery.allowedCIDRs }}
+  - {{ . }}
+{{- end }}
+{{- end }}
+
+Docs: https://github.com/embernet-ai/emberwire
+Node compatibility: https://github.com/embernet-ai/emberwire/blob/main/docs/compatibility.md

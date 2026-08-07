@@ -1,0 +1,41 @@
+apiVersion: v2
+name: emberwire-app
+description: Emberwire — a flow engine for EmberNET. Node-RED's idea, one static Go binary.
+type: application
+
+version: 0.1.0
+appVersion: "0.1.0"
+
+# Publicly reachable HTTPS, per the App Store contract. A broken icon URL is a
+# broken card in the catalogue.
+icon: https://raw.githubusercontent.com/embernet-ai/emberwire/main/docs/icon.png
+
+home: https://github.com/embernet-ai/emberwire
+sources:
+  - https://github.com/embernet-ai/emberwire
+
+keywords:
+  - embernet
+  - industrial
+  - flow
+  - automation
+  - iot
+
+maintainers:
+  - name: Patrick Ryan
+    email: patrick@fireballz.ai
+
+annotations:
+  catalog.cattle.io/display-name: "Emberwire"
+  catalog.cattle.io/namespace: default
+  catalog.cattle.io/release-name: emberwire
+  catalog.cattle.io/os: linux
+  catalog.cattle.io/arch: "amd64,arm64"
+  catalog.cattle.io/certified: partner
+  catalog.cattle.io/kube-version: ">=1.24.0-0"
+  catalog.cattle.io/categories: "Forge Industrial,Automation,Flow"
+  catalog.cattle.io/requests-cpu: "10m"
+  catalog.cattle.io/requests-memory: "64Mi"
+  embernet.ai/vendor: "Fireball Industries"
+  embernet.ai/maintainer: "Patrick Ryan"
+  embernet.ai/documentation-url: "https://github.com/embernet-ai/emberwire#readme"

@@ -1,0 +1,62 @@
+name: Publish Image
+
+on:
+  push:
+    branches: [main]
+    tags: ['v*']
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  packages: write
+
+jobs:
+  build:
+    name: Build and push
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: docker/setup-qemu-action@v3
+
+      - uses: docker/setup-buildx-action@v3
+
+      - uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ghcr.io/embernet-ai/emberwire
+          tags: |
+            type=ref,event=branch
+            type=semver,pattern={{version}}
+            type=semver,pattern={{major}}.{{minor}}
+            type=sha,format=short
+
+      - name: Build and push
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          # arm64 because the edge fleet is not all x86 — the RT kernel and
+          # images already build for aarch64.
+          platforms: linux/amd64,linux/arm64
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          build-args: |
+            VERSION=${{ github.ref_name }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Report image size
+        # The whole premise is that this is small. If it stops being small,
+        # that is a finding.
+        run: |
+          docker pull ghcr.io/embernet-ai/emberwire:sha-$(git rev-parse --short HEAD)
+          SIZE=$(docker image inspect ghcr.io/embernet-ai/emberwire:sha-$(git rev-parse --short HEAD) --format '{{.Size}}')
+          echo "### Image size: $((SIZE/1024/1024)) MiB" >> "$GITHUB_STEP_SUMMARY"
+          echo "nodered/node-red:latest is roughly 450 MiB for comparison." >> "$GITHUB_STEP_SUMMARY"

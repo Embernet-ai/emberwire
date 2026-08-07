@@ -1,0 +1,231 @@
+# ── Image ────────────────────────────────────────────────────────────────────
+image:
+  repository: ghcr.io/embernet-ai/emberwire
+  tag: ""            # defaults to .Chart.AppVersion
+  pullPolicy: IfNotPresent
+
+imagePullSecrets:
+  - name: ghcr-secret
+
+# ── Replicas ─────────────────────────────────────────────────────────────────
+# One. Emberwire holds flow state and open connections to brokers and PLCs;
+# two replicas behind one Service would both subscribe and both write. Scaling
+# out means deploying a second instance with its own flows, which is what the
+# multi-instance support in the App Store is for.
+replicaCount: 1
+
+# ── Resources ────────────────────────────────────────────────────────────────
+# Presets rather than raw numbers, matching the node-red chart so an operator
+# switching between them does not have to think. Default is "small", which is
+# most of the point of this project: the node-red chart's default requests
+# 512Mi and limits 2Gi.
+resources:
+  preset: small     # small | medium | large | custom
+  presets:
+    small:
+      requests: { cpu: 10m, memory: 64Mi }
+      limits:   { cpu: 500m, memory: 256Mi }
+    medium:
+      requests: { cpu: 50m, memory: 128Mi }
+      limits:   { cpu: 1000m, memory: 512Mi }
+    large:
+      requests: { cpu: 200m, memory: 512Mi }
+      limits:   { cpu: 2000m, memory: 2Gi }
+  custom: {}
+
+# ── Service ──────────────────────────────────────────────────────────────────
+# ClusterIP is mandatory: the dashboard proxies apps by service DNS, and a
+# NodePort or LoadBalancer would not be reachable through it.
+service:
+  type: ClusterIP
+  port: 8080          # what the dashboard proxy targets
+  targetPort: 1880    # what the binary listens on
+  # The editor holds a websocket. Without affinity it breaks behind the proxy
+  # the moment there is more than one endpoint.
+  sessionAffinity: ClientIP
+  sessionAffinityTimeoutSeconds: 10800
+
+# ── App Store integration ────────────────────────────────────────────────────
+gui:
+  enabled: true
+  type: web
+  port: 8080
+  displayName: ""     # only used when the dashboard did not inject one
+
+# Injected by the dashboard's DeployApp at deploy time. Do not set by hand.
+embernet:
+  displayName: ""
+
+tenantLabels: {}
+
+# ── Networking ───────────────────────────────────────────────────────────────
+# Three modes. This is the reason Emberwire exists on a plant floor: a flow
+# engine that can only see what k3s routes to it cannot inventory an OT segment.
+#
+#   cluster  ClusterIP only. Multi-instance safe, unlimited per node.
+#            Sees what the cluster routes. The default and the right choice
+#            unless you specifically need L2 access.
+#
+#   host     hostNetwork. Sees the host's interfaces, ARP table and broadcast
+#            domain. Effectively one instance per node, because the port is
+#            the node's. Set network.hostPort to move it off 1880.
+#
+#   macvlan  Multus attachment. The pod gets its own MAC and its own IP on the
+#            target VLAN, so it is BOTH multi-instance safe AND sitting
+#            directly on the segment with the PLCs. No port collisions at all,
+#            because each instance has its own address.
+#
+# macvlan needs Multus on the cluster. No other App Store chart ships this yet;
+# the retired MACVLAN-K3S-Implementation repo never published an index.
+network:
+  mode: cluster       # cluster | host | macvlan
+
+  # host mode only.
+  hostPort: 1880
+
+  # macvlan mode only.
+  macvlan:
+    # Create a NetworkAttachmentDefinition, or reference one that already
+    # exists by name. Nothing in the catalogue creates these today, so the
+    # default is to create one.
+    create: true
+    # Used when create is false.
+    existingName: ""
+    # Host interface to attach to. Must exist on every node this can schedule
+    # onto — pin with nodeSelector if it does not.
+    master: eth1
+    mode: bridge      # bridge | vepa | private | passthru
+    # Static host-local IPAM. DHCP needs a CNI DHCP daemon on every node, which
+    # is a cluster-wide prerequisite rather than a chart concern.
+    ipam:
+      type: host-local
+      subnet: ""        # e.g. 10.20.30.0/24 — required
+      rangeStart: ""    # e.g. 10.20.30.200
+      rangeEnd: ""      # e.g. 10.20.30.250
+      gateway: ""       # e.g. 10.20.30.1
+      routes: []        # e.g. [{ dst: 0.0.0.0/0 }]
+
+  # Extra container ports to expose in host mode — Modbus 502, OPC-UA 4840,
+  # EtherNet/IP 44818, BACnet 47808.
+  extraPorts: []
+
+# ── Discovery ────────────────────────────────────────────────────────────────
+# The scan nodes. Off by default: this is a plant-floor inventory tool, not a
+# scanner anybody with edit access can aim anywhere. Enabling it without listing
+# the networks it may probe is a startup error, not a licence to scan the world.
+discovery:
+  enabled: false
+  allowedCIDRs: []
+  # Raw sockets need these. Without them the scan nodes fall back to TCP
+  # connect probing rather than failing.
+  addCapabilities:
+    - NET_RAW
+    - NET_ADMIN
+
+# ── Persistence ──────────────────────────────────────────────────────────────
+# 2Gi per the edge Longhorn sweep. Flows, credentials and context all live here.
+persistence:
+  enabled: true
+  size: 2Gi
+  storageClass: ""      # "" inherits the cluster default (local-path on k3s)
+  accessMode: ReadWriteOnce
+  mountPath: /data
+  annotations: {}
+
+# ── Authentication ───────────────────────────────────────────────────────────
+# Emberwire refuses to start without this. Leave passwordHash empty and the
+# chart generates a password on first install and keeps it across upgrades.
+auth:
+  enabled: true
+  username: admin
+  password: ""          # plaintext; hashed into a Secret at install time
+  passwordHash: ""      # pre-computed bcrypt hash, wins over password
+  sessionTTL: 168h
+
+# credentialSecret encrypts node credentials at rest.
+#
+# Generated on first install and preserved across upgrades by reading the
+# existing Secret back. If it ever regenerates, every stored credential becomes
+# undecryptable — which is why this is not a plain randAlphaNum.
+emberwire:
+  credentialSecret: ""
+
+# ── Runtime ──────────────────────────────────────────────────────────────────
+runtime:
+  inboxCapacity: 1024
+  # block | drop-newest | drop-oldest | error
+  overflow: block
+  blockTimeout: 30s
+  closeTimeout: 15s
+
+logging:
+  level: info      # error | warn | info | debug | trace
+  format: json     # json for a cluster, text for a terminal
+
+metrics:
+  enabled: true
+  path: /metrics
+  serviceMonitor:
+    enabled: false
+    interval: 30s
+    labels: {}
+
+# ── Scheduling ───────────────────────────────────────────────────────────────
+# Injected by DeployApp to pin the workload to the selected node. Hardcoding it
+# defeats the per-node deployment model.
+nodeSelector: {}
+tolerations: []
+affinity: {}
+
+podAnnotations: {}
+podLabels: {}
+
+# ── Security ─────────────────────────────────────────────────────────────────
+# distroless nonroot. The binary is static and needs nothing from the image.
+securityContext:
+  runAsNonRoot: true
+  runAsUser: 65532
+  runAsGroup: 65532
+  fsGroup: 65532
+  allowPrivilegeEscalation: false
+  readOnlyRootFilesystem: true
+  seccompProfile:
+    type: RuntimeDefault
+
+serviceAccount:
+  create: true
+  name: ""
+  annotations: {}
+
+# ── Probes ───────────────────────────────────────────────────────────────────
+# /health is unauthenticated so the kubelet can reach it. /ready reports the
+# runtime separately, so a runtime that failed to start leaves the Service
+# without the kubelet restart-looping the pod.
+probes:
+  liveness:
+    enabled: true
+    initialDelaySeconds: 5
+    periodSeconds: 20
+    timeoutSeconds: 3
+    failureThreshold: 3
+  readiness:
+    enabled: true
+    initialDelaySeconds: 2
+    periodSeconds: 10
+    timeoutSeconds: 3
+    failureThreshold: 3
+
+# Extra environment, for anything not modelled above.
+env: []
+envFrom: []
+
+ingress:
+  enabled: false
+  className: ""
+  annotations: {}
+  hosts: []
+  tls: []
+
+podDisruptionBudget:
+  enabled: false
+  minAvailable: 1

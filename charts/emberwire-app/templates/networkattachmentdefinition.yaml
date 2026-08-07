@@ -1,0 +1,52 @@
+{{- if and (eq (.Values.network.mode | default "cluster") "macvlan") .Values.network.macvlan.create }}
+{{- $mv := .Values.network.macvlan }}
+{{- /*
+The macvlan attachment.
+
+No other App Store chart ships one of these — the retired
+MACVLAN-K3S-Implementation repo never published an index, and the only Multus
+support in the catalogue is in the KubeVirt MicroVM charts, which reference
+pre-existing NetworkAttachmentDefinitions rather than creating them.
+
+This is the mode that makes Emberwire useful on an OT segment. The pod gets its
+own MAC and its own IP on the target VLAN, so it can ARP, it can be discovered,
+and it can talk to a PLC that has no route from the cluster network. Because
+each instance has its own address, several instances on one node do not fight
+over a port — which hostNetwork cannot give you.
+
+Requires Multus on the cluster. If the CRD is absent the install fails here,
+which is the right place to find out rather than staring at a Pending pod.
+*/}}
+apiVersion: k8s.cni.cncf.io/v1
+kind: NetworkAttachmentDefinition
+metadata:
+  name: {{ include "emberwire-app.nadName" . }}
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "emberwire-app.labels" . | nindent 4 }}
+spec:
+  config: |
+    {
+      "cniVersion": "0.3.1",
+      "name": {{ include "emberwire-app.nadName" . | quote }},
+      "type": "macvlan",
+      "master": {{ $mv.master | quote }},
+      "mode": {{ $mv.mode | default "bridge" | quote }},
+      "ipam": {
+        "type": {{ $mv.ipam.type | default "host-local" | quote }},
+        "subnet": {{ $mv.ipam.subnet | quote }}
+        {{- if $mv.ipam.rangeStart }},
+        "rangeStart": {{ $mv.ipam.rangeStart | quote }}
+        {{- end }}
+        {{- if $mv.ipam.rangeEnd }},
+        "rangeEnd": {{ $mv.ipam.rangeEnd | quote }}
+        {{- end }}
+        {{- if $mv.ipam.gateway }},
+        "gateway": {{ $mv.ipam.gateway | quote }}
+        {{- end }}
+        {{- if $mv.ipam.routes }},
+        "routes": {{ toJson $mv.ipam.routes }}
+        {{- end }}
+      }
+    }
+{{- end }}

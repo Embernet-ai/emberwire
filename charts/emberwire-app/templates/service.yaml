@@ -1,0 +1,45 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "emberwire-app.fullname" . }}
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "emberwire-app.labels" . | nindent 4 }}
+    {{- /* THE BIG FIVE on the Service too. The dashboard's /api/apps/services
+           endpoint queries Services by embernet.ai/store-app=true to fill the
+           Running Apps panel; labels on the pod alone make the app show in node
+           detail and stay invisible in the catalogue. */}}
+    {{- include "emberwire-app.storeLabels" . | nindent 4 }}
+    {{- include "emberwire-app.tenantLabels" . | nindent 4 }}
+  {{- $ann := include "emberwire-app.storeAnnotations" . }}
+  {{- if trim $ann }}
+  annotations:
+    {{- $ann | nindent 4 }}
+  {{- end }}
+spec:
+  type: {{ .Values.service.type }}
+  {{- if eq .Values.service.type "ClusterIP" }}
+  {{- with .Values.service.sessionAffinity }}
+  {{- /* The editor holds a websocket for the whole session. Without affinity it
+         is cut the moment there is more than one endpoint behind the Service. */}}
+  sessionAffinity: {{ . }}
+  {{- end }}
+  {{- if eq (.Values.service.sessionAffinity | default "") "ClientIP" }}
+  sessionAffinityConfig:
+    clientIP:
+      timeoutSeconds: {{ .Values.service.sessionAffinityTimeoutSeconds }}
+  {{- end }}
+  {{- end }}
+  ports:
+    - name: http
+      port: {{ .Values.service.port }}
+      targetPort: http
+      protocol: TCP
+    {{- range .Values.network.extraPorts }}
+    - name: {{ .name }}
+      port: {{ .containerPort }}
+      targetPort: {{ .name }}
+      protocol: {{ .protocol | default "TCP" }}
+    {{- end }}
+  selector:
+    {{- include "emberwire-app.selectorLabels" . | nindent 4 }}
