@@ -145,11 +145,19 @@ func TestIntegrationPostgresInsert(t *testing.T) {
 	user := requireEnv(t, "EMBERWIRE_TEST_PG_USER")
 	password := requireEnv(t, "EMBERWIRE_TEST_PG_PASSWORD")
 
+	// Honour the port rather than assuming 5432. A dev box frequently has
+	// something else already on the default port, and connecting to the wrong
+	// database is a far more confusing failure than not connecting at all.
+	port := os.Getenv("EMBERWIRE_TEST_PG_PORT")
+	if port == "" {
+		port = "5432"
+	}
+
 	svc := &credServices{testServices: newTestServices(), configs: map[string]node.Node{}}
 	svc.creds["password"] = password
 
 	cfg := build(t, "emberwire-postgres", `{
-        "host":"`+host+`","port":5432,"database":"`+database+`",
+        "host":"`+host+`","port":`+port+`,"database":"`+database+`",
         "user":"`+user+`","sslmode":"prefer","maxConns":2
     }`, svc)
 	svc.configs["srv"] = cfg

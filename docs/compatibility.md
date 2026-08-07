@@ -32,12 +32,12 @@ appear to work while routing on a literal string.
 
 ## Summary
 
-28 node types registered.
+29 node types registered.
 
 | Level | Count |
 |---|---|
 | full | 8 |
-| partial | 14 |
+| partial | 15 |
 | divergent | 0 |
 | emberwire-only | 6 |
 
@@ -75,6 +75,7 @@ appear to work while routing on a literal string.
 | Type | Level | Notes |
 |---|---|---|
 | `change` | partial | set, change, delete and move are supported for msg, flow and global targets. JSONata-typed values are not evaluated in this build. |
+| `function` | partial | Runs on goja, a JavaScript interpreter written in Go, rather than Node's vm module. The language is ES2023; the Node standard library is not present. require() and npm modules do not work and cannot be made to without embedding Node. There is always a CPU time limit, which Node-RED leaves optional and off. setTimeout and setInterval are not available — use a Delay or Trigger node, which the runtime can account for. Ignored properties: `libs`, `setTimeout`, `setInterval`, `require`. |
 | `range` | full | — |
 | `rbe` | partial | Block-unless-changed and deadband modes are supported. Narrowband modes are not implemented in this build. |
 | `switch` | partial | All comparison operators are supported except jsonata_exp, which needs an expression engine this build does not ship. Ignored properties: `jsonata_exp`. |
