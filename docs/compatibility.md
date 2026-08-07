@@ -32,14 +32,14 @@ appear to work while routing on a literal string.
 
 ## Summary
 
-17 node types registered.
+26 node types registered.
 
 | Level | Count |
 |---|---|
 | full | 8 |
-| partial | 9 |
+| partial | 14 |
 | divergent | 0 |
-| emberwire-only | 0 |
+| emberwire-only | 4 |
 
 ## Common
 
@@ -55,6 +55,14 @@ appear to work while routing on a literal string.
 | `link out` | partial | Link Out in "send to" mode is supported. "Return to calling Link Call" requires the Link Call node, which is not implemented in this build. |
 | `status` | full | — |
 
+## Config
+
+| Type | Level | Notes |
+|---|---|---|
+| `emberwire-influxdb` | emberwire-only | Emberwire's own InfluxDB connection, targeting the App Store's influxdb-app. |
+| `emberwire-postgres` | emberwire-only | Emberwire's own PostgreSQL connection. Targets the App Store's postgresql-app and timescale-db-pod, which share a wire protocol. |
+| `mqtt-broker` | partial | Connection, credentials, TLS, clean session, keepalive, birth and close messages are supported. Will messages and MQTT v5 properties are not implemented in this build. Ignored properties: `willTopic`, `willPayload`, `protocolVersion:5`. |
+
 ## Function
 
 | Type | Level | Notes |
@@ -64,6 +72,20 @@ appear to work while routing on a literal string.
 | `rbe` | partial | Block-unless-changed and deadband modes are supported. Narrowband modes are not implemented in this build. |
 | `switch` | partial | All comparison operators are supported except jsonata_exp, which needs an expression engine this build does not ship. Ignored properties: `jsonata_exp`. |
 
+## Network
+
+| Type | Level | Notes |
+|---|---|---|
+| `mqtt in` | partial | Topic subscription with QoS and payload decoding are supported. Dynamic subscription via a control message is not implemented. |
+| `mqtt out` | partial | Publishing with topic, QoS and retain from the node or the message is supported. MQTT v5 user properties are not implemented. |
+
+## Parser
+
+| Type | Level | Notes |
+|---|---|---|
+| `csv` | partial | Parsing to objects and rendering from objects are supported, with configurable separator and header handling. Multi-line quoted fields spanning separate messages are not reassembled. |
+| `json` | partial | Conversion in both directions is supported. Schema validation against msg.schema is not implemented in this build. Ignored properties: `schema`. |
+
 ## Sequence
 
 | Type | Level | Notes |
@@ -72,4 +94,11 @@ appear to work while routing on a literal string.
 | `join` | partial | Automatic mode rejoins sequences produced by Split, and manual mode joins by count. Timeout-based and reduce-sequence modes are not implemented. Ignored properties: `timeout`, `reduceRight`, `reduceExp`. |
 | `sort` | partial | Sorts array payloads and message sequences by a property. JSONata key expressions are not supported. Ignored properties: `keyType:jsonata`. |
 | `split` | partial | Splits arrays, objects, strings and buffers. Streaming mode, which carries a partial remainder between messages, is not implemented. Ignored properties: `stream`. |
+
+## Storage
+
+| Type | Level | Notes |
+|---|---|---|
+| `influxdb out` | emberwire-only | Emberwire's own node. The type name matches the community node-red-contrib-influxdb so an imported flow finds it, but the configuration is not identical — check the fields after importing. |
+| `postgres` | emberwire-only | Emberwire's own node. Writes to and reads from PostgreSQL or TimescaleDB, with batch insert for message sequences. |
 
