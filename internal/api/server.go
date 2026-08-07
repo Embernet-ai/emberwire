@@ -18,6 +18,7 @@ import (
 
 	"github.com/embernet-ai/emberwire/internal/config"
 	"github.com/embernet-ai/emberwire/internal/engine"
+	"github.com/embernet-ai/emberwire/internal/metrics"
 	"github.com/embernet-ai/emberwire/internal/node"
 	"github.com/embernet-ai/emberwire/internal/runtime"
 	"github.com/embernet-ai/emberwire/internal/store"
@@ -113,6 +114,34 @@ func (s *Server) routes() {
 	s.mux.HandleFunc("GET "+s.path("/ready"), s.handleReady)
 	s.mux.HandleFunc("POST "+s.path("/auth/token"), s.handleToken)
 	s.mux.HandleFunc("POST "+s.path("/auth/revoke"), s.handleRevoke)
+
+	// Metrics, unauthenticated like health. A Prometheus scraper carries no
+	// bearer token, and requiring one would mean either handing a credential to
+	// the monitoring stack or having no monitoring. The endpoint exposes counts
+	// and node ids, never message contents or configuration.
+	if s.deps.Config.Metrics.Enabled {
+		path := s.deps.Config.Metrics.Path
+		if path == "" {
+			path = "/metrics"
+		}
+		s.mux.Handle("GET "+s.path(path), metrics.NewHandler(s.deps.Version, func() []metrics.NodeStat {
+			rt := s.deps.Runtime()
+			if rt == nil {
+				return nil
+			}
+			snaps := rt.Snapshots()
+			out := make([]metrics.NodeStat, 0, len(snaps))
+			for _, sn := range snaps {
+				out = append(out, metrics.NodeStat{
+					NodeID: sn.NodeID, Type: sn.Type,
+					Received: sn.Received, Sent: sn.Sent, Errors: sn.Errors,
+					Dropped: sn.Dropped, Blocked: sn.Blocked,
+					QueueLen: sn.QueueLen, QueueCap: sn.QueueCap, QueueHigh: sn.QueueHigh,
+				})
+			}
+			return out
+		}))
+	}
 
 	// Authenticated.
 	s.mux.Handle("GET "+s.path("/settings"), s.auth(PermSettings, s.handleSettings))
