@@ -27,3 +27,7 @@ coverage.*
 # OS
 .DS_Store
 Thumbs.db
+
+# Compiled WASM test guest — built by CI, not committed
+testdata/wasmguest/*.wasm
+testdata/wasmguest/*.h

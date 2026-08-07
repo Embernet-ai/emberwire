@@ -32,6 +32,16 @@ jobs:
       - name: Vet
         run: go vet ./...
 
+      - name: Build the WASM test guest
+        # The sandbox tests need a real guest. Built here rather than committed,
+        # because a 3MB binary artefact in the repo would be reviewed by nobody
+        # and could drift from the source beside it. Without this the wasmhost
+        # tests skip, and a skipped sandbox test is not a passing one.
+        run: |
+          GOOS=wasip1 GOARCH=wasm go build -buildmode=c-shared \
+            -o testdata/wasmguest/guest.wasm ./testdata/wasmguest
+          test -s testdata/wasmguest/guest.wasm
+
       - name: Test with race detector
         # The race detector needs cgo. This is the test build only — the shipped
         # binary is built CGO_ENABLED=0 in the Dockerfile so it stays static and
@@ -42,6 +52,20 @@ jobs:
 
       - name: Coverage summary
         run: go tool cover -func=coverage.out | tail -n 1
+
+      - name: The sandbox tests actually ran
+        # A skipped test reads as a passing one in the summary. These are the
+        # tests behind the security claims in the README, so assert they
+        # executed rather than trusting that they did.
+        run: |
+          OUT=$(go test ./internal/wasmhost/ -count=1 -v -run TestWasm 2>&1)
+          echo "$OUT" | tail -20
+          if echo "$OUT" | grep -q "SKIP"; then
+            echo "::error::wasmhost tests were skipped; the guest did not build"
+            exit 1
+          fi
+          echo "$OUT" | grep -q "TestWasmMemoryCeilingIsEnforced" || {
+            echo "::error::the memory ceiling test did not run"; exit 1; }
 
   static-build:
     name: Static build
