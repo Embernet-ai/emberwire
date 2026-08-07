@@ -389,6 +389,30 @@ func TestSwitchNumericStringsAreNotCoercedAgainstEachOther(t *testing.T) {
 	}
 }
 
+func TestSwitchOrdersTwoStringsLexically(t *testing.T) {
+	// In JavaScript "10" < "9" is true, because two strings compare
+	// lexically no matter how numeric they look. A flow routing on a
+	// zero-padded device id or a version-like string depends on that, and
+	// coercing to numbers would silently send it down the wrong branch.
+	svc := newTestServices()
+	n := build(t, "switch", `{"property":"payload","checkall":"true","rules":[
+        {"t":"lt","v":"9","vt":"str"}
+    ]}`, svc)
+
+	if e, _ := send(t, n, msg(t, `{"payload":"10"}`)); e.total() != 1 {
+		t.Error(`"10" < "9" should be true as a string comparison`)
+	}
+
+	// But a genuine number on either side still coerces, because edit dialogs
+	// persist numeric fields as strings.
+	numeric := build(t, "switch", `{"property":"payload","checkall":"true","rules":[
+        {"t":"lt","v":"9","vt":"num"}
+    ]}`, svc)
+	if e, _ := send(t, numeric, msg(t, `{"payload":"10"}`)); e.total() != 0 {
+		t.Error(`"10" < 9 should be false once one side is a real number`)
+	}
+}
+
 func TestSwitchBetweenAcceptsReversedBounds(t *testing.T) {
 	svc := newTestServices()
 	n := build(t, "switch", `{"property":"payload","checkall":"true","rules":[

@@ -602,9 +602,20 @@ func typeNameOf(v any, present bool) string {
 }
 
 // compare orders two values, reporting false when they are not comparable.
-// Numbers compare numerically and strings lexically; a number against a numeric
-// string coerces, because edit dialogs persist numbers as strings.
+//
+// Two strings compare lexically, even when both look numeric. This matters: in
+// JavaScript "10" < "9" is true, so a flow sorting or routing on zero-padded
+// device ids or version-like strings depends on it, and coercing would silently
+// reorder them. Coercion only applies when at least one side is genuinely a
+// number, which is the case that matters because edit dialogs persist numeric
+// fields as strings.
 func compare(a, b any) (int, bool) {
+	as, aStr := a.(string)
+	bs, bStr := b.(string)
+	if aStr && bStr {
+		return strings.Compare(as, bs), true
+	}
+
 	af, aOK := asFloat(a)
 	bf, bOK := asFloat(b)
 	if aOK && bOK {
@@ -616,11 +627,6 @@ func compare(a, b any) (int, bool) {
 		default:
 			return 0, true
 		}
-	}
-	as, aStr := a.(string)
-	bs, bStr := b.(string)
-	if aStr && bStr {
-		return strings.Compare(as, bs), true
 	}
 	return 0, false
 }
