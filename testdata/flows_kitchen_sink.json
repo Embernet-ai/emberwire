@@ -1,0 +1,164 @@
+[
+    {
+        "id": "f1a2b3c4d5e6f708",
+        "type": "tab",
+        "label": "Line 1 — Press",
+        "disabled": false,
+        "info": "Hydraulic press cell.",
+        "env": [
+            { "name": "CELL_ID", "type": "str", "value": "press-01" }
+        ]
+    },
+    {
+        "id": "aaaabbbbccccdddd",
+        "type": "tab",
+        "label": "Disabled Flow",
+        "disabled": true,
+        "info": "",
+        "env": []
+    },
+    {
+        "id": "5f6e7d8c9b0a1234",
+        "type": "subflow",
+        "name": "Scale Reading",
+        "info": "Applies a linear scale to a raw ADC count.",
+        "category": "function",
+        "in": [
+            { "x": 40, "y": 60, "wires": [{ "id": "1111222233334444" }] }
+        ],
+        "out": [
+            { "x": 400, "y": 60, "wires": [{ "id": "1111222233334444", "port": 0 }] }
+        ],
+        "env": [
+            { "name": "SCALE", "type": "num", "value": 0.125 },
+            { "name": "OFFSET", "type": "num", "value": -12 }
+        ],
+        "color": "#DEBD5C"
+    },
+    {
+        "id": "1111222233334444",
+        "type": "change",
+        "z": "5f6e7d8c9b0a1234",
+        "name": "scale",
+        "rules": [
+            { "t": "set", "p": "payload", "pt": "msg", "to": "payload", "tot": "msg" }
+        ],
+        "x": 220,
+        "y": 60,
+        "wires": [[]]
+    },
+    {
+        "id": "9999888877776666",
+        "type": "group",
+        "z": "f1a2b3c4d5e6f708",
+        "name": "Ingest",
+        "style": { "label": true },
+        "nodes": ["a1a1a1a1a1a1a1a1", "b2b2b2b2b2b2b2b2"]
+    },
+    {
+        "id": "7777666655554444",
+        "type": "group",
+        "z": "f1a2b3c4d5e6f708",
+        "g": "9999888877776666",
+        "name": "Inner",
+        "style": { "label": true },
+        "nodes": ["b2b2b2b2b2b2b2b2"]
+    },
+    {
+        "id": "cfg0broker000001",
+        "type": "mqtt-broker",
+        "name": "Plant MQTT",
+        "broker": "10.20.30.40",
+        "port": "1883",
+        "clientid": "",
+        "keepalive": "60",
+        "cleansession": true
+    },
+    {
+        "id": "a1a1a1a1a1a1a1a1",
+        "type": "mqtt in",
+        "z": "f1a2b3c4d5e6f708",
+        "g": "9999888877776666",
+        "name": "raw counts",
+        "topic": "press/01/raw",
+        "qos": "0",
+        "broker": "cfg0broker000001",
+        "x": 140,
+        "y": 100,
+        "wires": [["b2b2b2b2b2b2b2b2", "d4d4d4d4d4d4d4d4"]]
+    },
+    {
+        "id": "b2b2b2b2b2b2b2b2",
+        "type": "subflow:5f6e7d8c9b0a1234",
+        "z": "f1a2b3c4d5e6f708",
+        "g": "7777666655554444",
+        "name": "scale it",
+        "env": [
+            { "name": "SCALE", "type": "num", "value": "0.25" }
+        ],
+        "x": 380,
+        "y": 80,
+        "wires": [["c3c3c3c3c3c3c3c3"]]
+    },
+    {
+        "id": "c3c3c3c3c3c3c3c3",
+        "type": "debug",
+        "z": "f1a2b3c4d5e6f708",
+        "name": "scaled",
+        "active": true,
+        "targetType": "msg",
+        "complete": "payload",
+        "x": 580,
+        "y": 80,
+        "wires": []
+    },
+    {
+        "id": "d4d4d4d4d4d4d4d4",
+        "type": "function",
+        "z": "f1a2b3c4d5e6f708",
+        "name": "disabled node",
+        "func": "return msg;",
+        "outputs": 1,
+        "d": true,
+        "x": 380,
+        "y": 160,
+        "wires": [["e5e5e5e5e5e5e5e5"]]
+    },
+    {
+        "id": "e5e5e5e5e5e5e5e5",
+        "type": "http request",
+        "z": "f1a2b3c4d5e6f708",
+        "name": "post reading",
+        "method": "POST",
+        "url": "https://example.invalid/readings",
+        "credentials": {
+            "user": "svc-press",
+            "password": "hunter2"
+        },
+        "x": 580,
+        "y": 160,
+        "wires": [[]]
+    },
+    {
+        "id": "dead0beef0000001",
+        "type": "inject",
+        "z": "f1a2b3c4d5e6f708",
+        "name": "dangling",
+        "props": [{ "p": "payload" }],
+        "repeat": "",
+        "x": 140,
+        "y": 240,
+        "wires": [["this-node-does-not-exist"]]
+    },
+    {
+        "id": "0000111122223333",
+        "type": "some-future-node-type",
+        "z": "f1a2b3c4d5e6f708",
+        "name": "unknown to this build",
+        "someUnknownProperty": { "nested": [1, 2, 3] },
+        "anotherOne": "must survive a save",
+        "x": 140,
+        "y": 300,
+        "wires": [[]]
+    }
+]

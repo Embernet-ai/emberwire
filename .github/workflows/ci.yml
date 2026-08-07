@@ -1,0 +1,98 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+
+env:
+  GO_VERSION: "1.26.4"
+
+jobs:
+  test:
+    name: Test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version: ${{ env.GO_VERSION }}
+          cache: true
+
+      - name: go mod tidy is committed
+        run: |
+          go mod tidy
+          git diff --exit-code go.mod go.sum
+
+      - name: Vet
+        run: go vet ./...
+
+      - name: Test with race detector
+        # The race detector needs cgo. This is the test build only — the shipped
+        # binary is built CGO_ENABLED=0 in the Dockerfile so it stays static and
+        # runs on distroless.
+        env:
+          CGO_ENABLED: "1"
+        run: go test -race -count=1 -coverprofile=coverage.out ./...
+
+      - name: Coverage summary
+        run: go tool cover -func=coverage.out | tail -n 1
+
+  static-build:
+    name: Static build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version: ${{ env.GO_VERSION }}
+          cache: true
+
+      - name: Build static binary
+        env:
+          CGO_ENABLED: "0"
+          GOOS: linux
+        run: go build -trimpath -ldflags="-s -w" -buildvcs=false -o emberwire ./cmd/emberwire
+
+      - name: Report binary size
+        # The whole premise of this project is that it is small. If the binary
+        # grows past the budget, that is a finding, not a footnote.
+        run: |
+          SIZE=$(stat -c%s emberwire)
+          echo "emberwire: $SIZE bytes ($((SIZE/1024/1024)) MiB)"
+          echo "### Binary size: $((SIZE/1024/1024)) MiB" >> "$GITHUB_STEP_SUMMARY"
+          if [ "$SIZE" -gt 41943040 ]; then
+            echo "::error::binary exceeds the 40 MiB budget"
+            exit 1
+          fi
+
+      - name: Confirm the binary is actually static
+        run: |
+          file emberwire
+          if file emberwire | grep -q "dynamically linked"; then
+            echo "::error::binary is dynamically linked; it will not run on distroless/static"
+            exit 1
+          fi
+
+  fuzz:
+    name: Fuzz smoke
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version: ${{ env.GO_VERSION }}
+          cache: true
+
+      - name: Fuzz the property expression parser
+        # Parses attacker-influenced input from the admin API. A short run on
+        # every PR catches regressions; the corpus in testdata carries anything
+        # a longer run has already found.
+        run: go test ./internal/engine/ -run=XXX -fuzz=FuzzParsePath -fuzztime=60s

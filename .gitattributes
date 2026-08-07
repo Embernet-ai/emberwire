@@ -1,0 +1,12 @@
+# Normalise to LF in the repository. The binary is built on Linux and the chart
+# is rendered by Helm on Linux; CRLF sneaking in from a Windows checkout shows up
+# as spurious diffs and, in shell scripts, as a runtime failure.
+* text=auto eol=lf
+
+*.png binary
+*.jpg binary
+*.ico binary
+*.woff binary
+*.woff2 binary
+*.tgz binary
+*.wasm binary

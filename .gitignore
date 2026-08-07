@@ -1,0 +1,29 @@
+# Build output
+/emberwire
+/emberwire.exe
+/dist/
+/.deploy/
+
+# Editor bundle build artefacts (generated into web/dist by esbuild, embedded at build time)
+/web/dist/
+/web/node_modules/
+
+# Runtime data — never commit a flow file or a credential store
+/data/
+*.db
+*.bolt
+flows.json
+flows.json.bak*
+credentials.json
+
+# Helm packaging output
+*.tgz
+
+# Go
+*.test
+*.out
+coverage.*
+
+# OS
+.DS_Store
+Thumbs.db
