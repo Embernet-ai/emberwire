@@ -32,13 +32,13 @@ appear to work while routing on a literal string.
 
 ## Summary
 
-39 node types registered.
+42 node types registered.
 
 | Level | Count |
 |---|---|
 | full | 9 |
-| partial | 18 |
-| divergent | 6 |
+| partial | 20 |
+| divergent | 7 |
 | emberwire-only | 6 |
 
 ## Common
@@ -88,6 +88,9 @@ appear to work while routing on a literal string.
 
 | Type | Level | Notes |
 |---|---|---|
+| `http in` | divergent | Serves a path, with Express-style :params and a trailing *, and builds the same msg.req / msg.res / msg.payload shape Node-RED does, including JSON, form-encoded and raw bodies. Three deliberate differences. A request that no HTTP Response node answers is closed with 504 after a timeout instead of being held open forever, because Node-RED's version leaks a connection per request until the process runs out of sockets and stops answering with nothing in the log. Two nodes claiming the same method and path is refused at deploy time rather than one of them silently never firing. And a path that would shadow the editor or the admin API is refused for the same reason. File uploads are not parsed into msg.files; a multipart body arrives as raw bytes. Ignored properties: `upload`, `swaggerDoc`. |
+| `http request` | partial | Method, URL, headers, basic authentication, redirects and the three return types, with msg.url, msg.method and msg.headers overriding the node. The response body is size-capped and the call is bounded by a timeout, neither of which Node-RED does. Cookie jars, proxy settings, per-node TLS configuration and connection persistence are not implemented in this build. There is no egress allowlist: this node can reach anything the pod can, exactly as Node-RED's can, and the place to bound that is a NetworkPolicy rather than an edit dialog nobody outside the cluster can trust. Ignored properties: `proxy`, `tls`, `persist`, `cookies`. |
+| `http response` | partial | Status code and headers from the node or from msg.statusCode and msg.headers, with the payload as the body. Cookies set through msg.cookies are not implemented; set a Set-Cookie header instead. Ignored properties: `cookies`. |
 | `mqtt in` | partial | Topic subscription with QoS and payload decoding are supported. Dynamic subscription via a control message is not implemented. |
 | `mqtt out` | partial | Publishing with topic, QoS and retain from the node or the message is supported. MQTT v5 user properties are not implemented. |
 

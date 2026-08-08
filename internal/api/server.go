@@ -18,6 +18,7 @@ import (
 
 	"github.com/embernet-ai/emberwire/internal/config"
 	"github.com/embernet-ai/emberwire/internal/engine"
+	"github.com/embernet-ai/emberwire/internal/flowhttp"
 	"github.com/embernet-ai/emberwire/internal/metrics"
 	"github.com/embernet-ai/emberwire/internal/node"
 	"github.com/embernet-ai/emberwire/internal/runtime"
@@ -52,6 +53,12 @@ type Deps struct {
 	// Deploy swaps in a new flow set. It owns stopping the old runtime,
 	// persisting, and starting the new one.
 	Deploy func(ctx context.Context, flows *engine.Flows, expectedRev string) (DeployResult, error)
+
+	// FlowRoutes holds the paths the flow's HTTP In nodes have claimed. It is
+	// consulted for anything the fixed routes below did not match, because a
+	// flow's routes change on every deploy and http.ServeMux cannot unregister
+	// a pattern.
+	FlowRoutes *flowhttp.Router
 
 	// Version identifies this build in /settings and the log.
 	Version string
@@ -157,9 +164,71 @@ func (s *Server) routes() {
 	// auth in front of the login page itself would be a loop.
 	//
 	// Registered last and on the bare prefix, so it only catches what the API
-	// routes above did not.
+	// routes above did not. ServeMux prefers the most specific pattern, so every
+	// route registered above still wins over this one and a flow cannot shadow
+	// the admin API by claiming its path.
 	editorRoot := s.root + "/"
-	s.mux.Handle("GET "+editorRoot, web.Handler(s.root))
+	editor := web.Handler(s.root)
+
+	flowRoot := "/"
+	if s.deps.FlowRoutes != nil {
+		flowRoot = s.deps.FlowRoutes.Root()
+	}
+	if flowRoot != "/" {
+		flowRoot = strings.TrimSuffix(flowRoot, "/") + "/"
+	}
+
+	if flowRoot == editorRoot {
+		// Both live at the same prefix, which is the default. One handler tries
+		// the flow's routes and falls back to the editor. Registering two
+		// patterns would be a duplicate-registration panic.
+		s.mux.Handle(editorRoot, s.flowThenEditor(editor))
+		return
+	}
+	s.mux.Handle(flowRoot, http.HandlerFunc(s.serveFlowRoute))
+	s.mux.Handle("GET "+editorRoot, editor)
+}
+
+// flowThenEditor dispatches to a flow's HTTP In node if one claimed the path,
+// and serves the editor otherwise.
+//
+// The order matters and is this way round because the editor's handler answers
+// everything — it serves index.html for any unknown path so the single-page app
+// can route client-side. Asking it first would mean no flow route ever ran.
+func (s *Server) flowThenEditor(editor http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if s.dispatchFlowRoute(w, r) {
+			return
+		}
+		if r.Method != http.MethodGet && r.Method != http.MethodHead {
+			// The editor only answers GET. Without this, a POST to a path with
+			// no flow route would be served index.html with a 200, which reads
+			// as success to whatever sent it.
+			writeError(w, http.StatusNotFound, "no flow serves "+r.Method+" "+r.URL.Path)
+			return
+		}
+		editor.ServeHTTP(w, r)
+	})
+}
+
+func (s *Server) serveFlowRoute(w http.ResponseWriter, r *http.Request) {
+	if s.dispatchFlowRoute(w, r) {
+		return
+	}
+	writeError(w, http.StatusNotFound, "no flow serves "+r.Method+" "+r.URL.Path)
+}
+
+// dispatchFlowRoute runs a flow route if one matches, reporting whether it did.
+func (s *Server) dispatchFlowRoute(w http.ResponseWriter, r *http.Request) bool {
+	if s.deps.FlowRoutes == nil {
+		return false
+	}
+	h, params, ok := s.deps.FlowRoutes.Match(r.Method, r.URL.Path)
+	if !ok {
+		return false
+	}
+	h.ServeHTTP(w, flowhttp.WithRouteParams(r, params))
+	return true
 }
 
 // ---------------------------------------------------------------------------

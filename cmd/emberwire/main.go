@@ -20,6 +20,7 @@ import (
 	"github.com/embernet-ai/emberwire/internal/discover"
 	"github.com/embernet-ai/emberwire/internal/engine"
 	"github.com/embernet-ai/emberwire/internal/filescope"
+	"github.com/embernet-ai/emberwire/internal/flowhttp"
 	"github.com/embernet-ai/emberwire/internal/node"
 	"github.com/embernet-ai/emberwire/internal/nodes" // registers the built-in palette
 	"github.com/embernet-ai/emberwire/internal/runtime"
@@ -129,6 +130,19 @@ func cmdServe(args []string) error {
 			"allowedPaths", strings.Join(fileScope.Roots(), ","))
 	}
 
+	// The flow route table, with the editor and the admin API reserved so a flow
+	// cannot claim a path that would make them unreachable.
+	adminRoot := strings.TrimSuffix(cfg.Server.AdminRoot, "/")
+	reserved := []string{
+		adminRoot + "/health", adminRoot + "/ready", adminRoot + "/auth",
+		adminRoot + "/settings", adminRoot + "/nodes", adminRoot + "/flows",
+		adminRoot + "/runtime", adminRoot + "/inject", adminRoot + "/comms",
+	}
+	if cfg.Metrics.Enabled {
+		reserved = append(reserved, adminRoot+cfg.Metrics.Path)
+	}
+	nodes.Routes = flowhttp.NewRouter(cfg.Server.HTTPRoot, reserved)
+
 	flowStore := store.NewFlowStore(cfg.FlowPath())
 	flowStore.SetBackupGenerations(cfg.Data.BackupGenerations)
 
@@ -163,6 +177,7 @@ func cmdServe(args []string) error {
 		Logger:      log,
 		Runtime:     app.currentRuntime,
 		Deploy:      app.deploy,
+		FlowRoutes:  nodes.Routes,
 		Version:     version,
 	})
 	app.hub = srv.Hub()
@@ -319,6 +334,18 @@ func (a *application) stop(ctx context.Context) {
 	if cancel != nil {
 		cancel()
 	}
+
+	// Two process-wide registries outlive a runtime, because both resolve
+	// across flows and cannot be rebuilt from the graph alone. Clearing them
+	// here is what makes a redeploy see only the nodes that still exist.
+	//
+	// Without it, a deleted Link In stays registered and keeps the emitter of a
+	// runtime that has stopped, so a Link Out in the new flow that still names
+	// it delivers into a dead runner and the message goes nowhere quietly. The
+	// same applies to a route left behind by an HTTP In node whose Close did
+	// not run.
+	nodes.Links.Reset()
+	nodes.Routes.Reset()
 }
 
 // deploy replaces the running flows.

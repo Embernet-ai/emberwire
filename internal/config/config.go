@@ -42,6 +42,12 @@ type Server struct {
 	// The App Store proxies apps by path, so this has to be settable.
 	AdminRoot string `yaml:"adminRoot"`
 
+	// HTTPRoot is the prefix a flow's HTTP In nodes are served under, matching
+	// Node-RED's httpNodeRoot. It may be the same as AdminRoot — the fixed admin
+	// routes are more specific and still win — and a flow that tries to claim a
+	// path belonging to the editor or the API is refused at deploy time.
+	HTTPRoot string `yaml:"httpRoot"`
+
 	ReadTimeout     time.Duration `yaml:"readTimeout"`
 	WriteTimeout    time.Duration `yaml:"writeTimeout"`
 	ShutdownTimeout time.Duration `yaml:"shutdownTimeout"`
@@ -154,6 +160,7 @@ func Default() Config {
 			Host:      "0.0.0.0",
 			Port:      1880,
 			AdminRoot: "/",
+			HTTPRoot:  "/",
 			// Generous read timeout: a deploy of a large flow over a slow edge
 			// link is legitimate. Write timeout is zero because the comms
 			// websocket is long-lived and a deadline would cut it.
@@ -221,6 +228,7 @@ func applyEnv(cfg *Config) {
 	envStr("EMBERWIRE_HOST", &cfg.Server.Host)
 	envInt("EMBERWIRE_PORT", &cfg.Server.Port)
 	envStr("EMBERWIRE_ADMIN_ROOT", &cfg.Server.AdminRoot)
+	envStr("EMBERWIRE_HTTP_ROOT", &cfg.Server.HTTPRoot)
 
 	envStr("EMBERWIRE_DATA_DIR", &cfg.Data.Dir)
 	envStr("EMBERWIRE_FLOW_FILE", &cfg.Data.FlowFile)
@@ -318,6 +326,9 @@ func (c *Config) Validate() error {
 	}
 	if !strings.HasPrefix(c.Server.AdminRoot, "/") {
 		return fmt.Errorf("server.adminRoot %q must start with /", c.Server.AdminRoot)
+	}
+	if !strings.HasPrefix(c.Server.HTTPRoot, "/") {
+		return fmt.Errorf("server.httpRoot %q must start with /", c.Server.HTTPRoot)
 	}
 	if c.Data.Dir == "" {
 		return fmt.Errorf("data.dir is empty")
