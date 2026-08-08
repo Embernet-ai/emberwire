@@ -5,7 +5,13 @@
 /.deploy/
 
 # Editor bundle build artefacts (generated into web/dist by esbuild, embedded at build time)
-/web/dist/
+/web/dist/*
+# ...except the placeholder. web/embed.go has //go:embed all:dist, which is a
+# compile error when the directory does not exist — so a fresh clone could not
+# run go build, go vet or go test at all until the editor had been built. The
+# comment in embed.go always claimed this file existed; the ignore rule above
+# meant it never could.
+!/web/dist/.gitkeep
 /web/node_modules/
 
 # Runtime data — never commit a flow file or a credential store

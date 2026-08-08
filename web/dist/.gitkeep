@@ -1,0 +1,6 @@
+Placeholder so //go:embed all:dist compiles on a fresh clone.
+
+The real bundle is written here by `cd web && npm run build` and is not
+committed. A binary built without it starts, serves the API, and returns a
+plain-text explanation on the editor route rather than a blank page —
+see web.Assets.

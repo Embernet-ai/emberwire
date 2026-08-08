@@ -78,11 +78,41 @@ jobs:
           go-version: ${{ env.GO_VERSION }}
           cache: true
 
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: web/package-lock.json
+
+      - name: Build the editor bundle
+        # The other jobs compile against the committed placeholder, which is
+        # enough for vet and tests. This job must not: it reports the binary
+        # size and enforces the budget, and a binary carrying a 200-byte
+        # placeholder instead of the real editor would report a size that is
+        # not the shipped one and pass a budget it was never tested against.
+        working-directory: web
+        run: |
+          npm ci
+          npm run build
+          test -s dist/index.html
+
       - name: Build static binary
         env:
           CGO_ENABLED: "0"
           GOOS: linux
         run: go build -trimpath -ldflags="-s -w" -buildvcs=false -o emberwire ./cmd/emberwire
+
+      - name: The editor is actually in the binary
+        # web.Assets falls back to a plain-text explanation when the bundle is
+        # missing, which is the right runtime behaviour and the wrong thing to
+        # ship silently. The FOUC guard is the marker: it is the first thing in
+        # the built index.html, it is not in any Go source, and it cannot be
+        # present unless the real bundle was embedded.
+        run: |
+          if ! grep -qa "dark-mode-pending" emberwire; then
+            echo "::error::the editor bundle is not embedded in the binary"
+            exit 1
+          fi
 
       - name: Report binary size
         # The whole premise of this project is that it is small. If the binary
