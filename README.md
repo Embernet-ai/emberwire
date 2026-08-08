@@ -4,9 +4,9 @@ Node-RED's idea, our runtime. A flow engine in Go for EmberNET — one static
 binary, an editor that looks like it belongs to us, and a scheduler that does not
 fall over when a sensor decides to talk faster than the thing reading it.
 
-We already ship Node-RED in the App Store. It works. It is also a 450MB image
+We already ship Node-RED in the App Store. It works. It is also a 717MB image
 running a single-threaded event loop, and it looks like somebody else's product
-bolted into our dashboard. This replaces it.
+bolted into our dashboard. This replaces it, in 25MB.
 
 **Flow files stay Node-RED v1 compatible.** Import your `flows.json`, it runs.
 Nobody loses work. Everything else was up for grabs and I took most of it.
@@ -121,11 +121,34 @@ than opening a connection per copy.
 Partial deploy: a redeploy currently restarts every node rather than only the
 ones that changed. Link Call, and the JSONata expression engine.
 
-**Still not benchmarked against Node-RED.** Every number in this README is
-Emberwire measured on my box. The comparison numbers do not exist because I have
-not run the harness, and the RSS and throughput figures on the forums are
-anecdotes with no controlled measurement behind them. They go in when I produce
-them myself, on the same hardware, with the same flow, and not before.
+## Measured against Node-RED
+
+Both runtimes in rootless podman on one box, the same five-node flow file
+deployed to each **unchanged**, driven by the same load generator in the same
+session. Linux, 12 CPUs, `nodered/node-red:latest`, 8 connections, 30 seconds.
+
+| | Emberwire | Node-RED | |
+|---|---|---|---|
+| Image size | **25.1 MB** | 717 MB | 29× |
+| Memory, idle | **4.8 MB** | 54.6 MB | 11× |
+| Memory, under load | **12.3 MB** | 179.6 MB | 15× |
+| Throughput | **3,460 req/s** | 1,290 req/s | 2.7× |
+| Latency p50 | **1.03 ms** | 4.61 ms | 4.5× |
+| Latency p99 | **16.72 ms** | 23.14 ms | 1.4× |
+| Cold start | **2.1–2.3 s** | 4.6–5.5 s | ~2.3× |
+
+Three things I am not going to let those numbers say more than they should.
+Cold start includes about two seconds of container start that both pay. The
+throughput figure includes the HTTP stack, deliberately — it is the only surface
+both present identically — so it is not a measurement of either scheduler alone.
+And the p99 gap is much narrower than the p50 gap, because under saturation both
+runtimes queue and queueing dominates the tail; the median is where the
+per-request cost actually shows.
+
+Produced by `emberwire bench`, which is in this repository. The method, the
+flow, the exact commands and the caveats are in [docs/bench/](docs/bench/). No
+figure here came off a forum, and nothing comparative goes in a document until
+that command produced it on one box in one run.
 
 ## Compatibility
 

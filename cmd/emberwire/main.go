@@ -53,11 +53,13 @@ func run() error {
 			return cmdHashPassword(os.Args[2:])
 		case "import":
 			return cmdImport(os.Args[2:])
+		case "bench":
+			return cmdBench(os.Args[2:])
 		case "version":
 			fmt.Println(version)
 			return nil
 		default:
-			return fmt.Errorf("unknown command %q (try: serve, hash-password, import, version)", os.Args[1])
+			return fmt.Errorf("unknown command %q (try: serve, hash-password, import, bench, version)", os.Args[1])
 		}
 	}
 	return cmdServe(os.Args[1:])

@@ -1,0 +1,117 @@
+[
+    {
+        "id": "bench",
+        "type": "tab",
+        "label": "bench",
+        "info": "The comparison flow. One file, deployed unchanged to both runtimes.\n\nFive nodes: an HTTP endpoint, three property edits, a reply. Nothing in it is\nEmberwire-specific and nothing in it is fast on purpose — it is the shape of a\nsmall real flow, which is what the comparison is supposed to be about."
+    },
+    {
+        "id": "bench-in",
+        "type": "http in",
+        "z": "bench",
+        "name": "",
+        "url": "/bench",
+        "method": "post",
+        "upload": false,
+        "swaggerDoc": "",
+        "x": 130,
+        "y": 100,
+        "wires": [
+            [
+                "bench-1"
+            ]
+        ]
+    },
+    {
+        "id": "bench-1",
+        "type": "change",
+        "z": "bench",
+        "name": "stamp",
+        "rules": [
+            {
+                "t": "set",
+                "p": "hop",
+                "pt": "msg",
+                "to": "1",
+                "tot": "str"
+            }
+        ],
+        "action": "",
+        "property": "",
+        "from": "",
+        "to": "",
+        "reg": false,
+        "x": 300,
+        "y": 100,
+        "wires": [
+            [
+                "bench-2"
+            ]
+        ]
+    },
+    {
+        "id": "bench-2",
+        "type": "change",
+        "z": "bench",
+        "name": "count",
+        "rules": [
+            {
+                "t": "set",
+                "p": "hop",
+                "pt": "msg",
+                "to": "2",
+                "tot": "str"
+            }
+        ],
+        "action": "",
+        "property": "",
+        "from": "",
+        "to": "",
+        "reg": false,
+        "x": 440,
+        "y": 100,
+        "wires": [
+            [
+                "bench-3"
+            ]
+        ]
+    },
+    {
+        "id": "bench-3",
+        "type": "change",
+        "z": "bench",
+        "name": "reply body",
+        "rules": [
+            {
+                "t": "set",
+                "p": "payload",
+                "pt": "msg",
+                "to": "ok",
+                "tot": "str"
+            }
+        ],
+        "action": "",
+        "property": "",
+        "from": "",
+        "to": "",
+        "reg": false,
+        "x": 590,
+        "y": 100,
+        "wires": [
+            [
+                "bench-out"
+            ]
+        ]
+    },
+    {
+        "id": "bench-out",
+        "type": "http response",
+        "z": "bench",
+        "name": "",
+        "statusCode": "200",
+        "headers": {},
+        "x": 750,
+        "y": 100,
+        "wires": []
+    }
+]
