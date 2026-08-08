@@ -143,6 +143,19 @@ exec:
   #   - /usr/bin/mbpoll
   #   - /opt/plant/bin/reset-line
 
+# ── The file nodes ───────────────────────────────────────────────────────────
+# Where File, File In and Watch may read and write.
+#
+# The data directory is always allowed and does not need listing — that is the
+# PVC, where a flow's own files belong. Anything else is opt-in. Node-RED's file
+# nodes take any path at all, so editing a flow there is equivalent to reading
+# any file the process can, including a mounted Secret.
+#
+# Paths are resolved through symlinks, so a link planted under the PVC cannot
+# point out of it. If you add a path here, mount it into the container too.
+files:
+  allowedPaths: []
+
 # ── Persistence ──────────────────────────────────────────────────────────────
 # 2Gi per the edge Longhorn sweep. Flows, credentials and context all live here.
 persistence:

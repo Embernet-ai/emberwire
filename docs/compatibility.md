@@ -32,13 +32,13 @@ appear to work while routing on a literal string.
 
 ## Summary
 
-36 node types registered.
+39 node types registered.
 
 | Level | Count |
 |---|---|
 | full | 9 |
 | partial | 18 |
-| divergent | 3 |
+| divergent | 6 |
 | emberwire-only | 6 |
 
 ## Common
@@ -114,6 +114,9 @@ appear to work while routing on a literal string.
 
 | Type | Level | Notes |
 |---|---|---|
+| `file` | divergent | Append, overwrite and delete, with the filename from a literal, a message property, context or the environment, and utf8, base64, hex or raw encodings. The divergence is the path scope: the file nodes may only reach the data directory and whatever else the operator listed, resolved through symlinks so a link planted on the PVC cannot point out of it. Node-RED's file nodes take any path, which makes editing a flow equivalent to reading any file the process can. Writes are fsynced by default, which Node-RED's are not. |
+| `file in` | divergent | Whole-file, per-line and chunked reads, with utf8, base64, hex or raw output. Same path scope as the File node, and for the same reason. A read is also size-capped: Node-RED reads a whole file into memory with no limit, so pointing the node at the wrong path is an OOM-kill rather than an error. Past the cap the node says which limit was hit and that per-line or chunked mode would work. |
 | `influxdb out` | emberwire-only | Emberwire's own node. The type name matches the community node-red-contrib-influxdb so an imported flow finds it, but the configuration is not identical — check the fields after importing. |
 | `postgres` | emberwire-only | Emberwire's own node. Writes to and reads from PostgreSQL or TimescaleDB, with batch insert for message sequences. |
+| `watch` | divergent | Reports files and directories appearing, changing and being removed, with the same message shape Node-RED produces. It polls rather than using the kernel's notification interface, so a change is seen within the poll interval rather than immediately, and two changes inside one interval are reported once. That is a deliberate trade: fsnotify means per-platform code and a filename suffix that is a build constraint, which has already cost this codebase a day. Same path scope as the other file nodes, and the number of watched entries is capped so a recursive watch on a large tree cannot stall the runtime. |
 

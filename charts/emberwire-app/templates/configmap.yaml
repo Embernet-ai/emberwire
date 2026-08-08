@@ -53,6 +53,14 @@ data:
         []
         {{- end }}
 
+    files:
+      allowedPaths:
+        {{- if .Values.files.allowedPaths }}
+        {{- toYaml .Values.files.allowedPaths | nindent 8 }}
+        {{- else }}
+        []
+        {{- end }}
+
     logging:
       level: {{ .Values.logging.level }}
       format: {{ .Values.logging.format }}

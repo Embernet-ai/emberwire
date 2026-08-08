@@ -19,6 +19,7 @@ import (
 	"github.com/embernet-ai/emberwire/internal/config"
 	"github.com/embernet-ai/emberwire/internal/discover"
 	"github.com/embernet-ai/emberwire/internal/engine"
+	"github.com/embernet-ai/emberwire/internal/filescope"
 	"github.com/embernet-ai/emberwire/internal/node"
 	"github.com/embernet-ai/emberwire/internal/nodes" // registers the built-in palette
 	"github.com/embernet-ai/emberwire/internal/runtime"
@@ -113,6 +114,19 @@ func cmdServe(args []string) error {
 
 	if err := os.MkdirAll(cfg.Data.Dir, 0o700); err != nil {
 		return fmt.Errorf("creating data directory %s: %w", cfg.Data.Dir, err)
+	}
+
+	// After the data directory exists, so its symlinks resolve — on Kubernetes
+	// the mount path is usually a link into the kubelet's tree, and a scope
+	// built before the mkdir would compare the wrong string.
+	fileScope, err := filescope.NewScope(cfg.Data.Dir, cfg.Files.AllowedPaths)
+	if err != nil {
+		return fmt.Errorf("files: %w", err)
+	}
+	nodes.Files = fileScope
+	if len(cfg.Files.AllowedPaths) > 0 {
+		log.Warn("the file nodes may reach outside the data directory",
+			"allowedPaths", strings.Join(fileScope.Roots(), ","))
 	}
 
 	flowStore := store.NewFlowStore(cfg.FlowPath())

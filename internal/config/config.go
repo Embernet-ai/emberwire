@@ -28,6 +28,7 @@ type Config struct {
 	Runtime   Runtime   `yaml:"runtime"`
 	Discovery Discovery `yaml:"discovery"`
 	Exec      Exec      `yaml:"exec"`
+	Files     Files     `yaml:"files"`
 	Logging   Logging   `yaml:"logging"`
 	Metrics   Metrics   `yaml:"metrics"`
 }
@@ -121,6 +122,17 @@ type Exec struct {
 	// resolved absolute path, so naming "curl" allows the curl on the PATH at
 	// the time and not whatever a later mount puts in front of it.
 	AllowedCommands []string `yaml:"allowedCommands"`
+}
+
+// Files bounds where the file nodes may read and write.
+//
+// Unlike the exec node this is on by default, scoped to the data directory. A
+// flow reading and writing under its own PVC is the ordinary case; reaching
+// outside it is not, and Node-RED's file nodes taking any path is what makes
+// "can edit a flow" mean "can read any file this process can".
+type Files struct {
+	// AllowedPaths are extra directory trees on top of the data directory.
+	AllowedPaths []string `yaml:"allowedPaths"`
 }
 
 // Logging controls the runtime log.
@@ -249,6 +261,9 @@ func applyEnv(cfg *Config) {
 	}
 	if v := os.Getenv("EMBERWIRE_EXEC_ALLOWED_COMMANDS"); v != "" {
 		cfg.Exec.AllowedCommands = splitList(v)
+	}
+	if v := os.Getenv("EMBERWIRE_FILE_ALLOWED_PATHS"); v != "" {
+		cfg.Files.AllowedPaths = splitList(v)
 	}
 }
 
