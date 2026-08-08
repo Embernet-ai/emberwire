@@ -32,12 +32,12 @@ appear to work while routing on a literal string.
 
 ## Summary
 
-33 node types registered.
+36 node types registered.
 
 | Level | Count |
 |---|---|
-| full | 8 |
-| partial | 16 |
+| full | 9 |
+| partial | 18 |
 | divergent | 3 |
 | emberwire-only | 6 |
 
@@ -96,7 +96,10 @@ appear to work while routing on a literal string.
 | Type | Level | Notes |
 |---|---|---|
 | `csv` | partial | Parsing to objects and rendering from objects are supported, with configurable separator and header handling. Multi-line quoted fields spanning separate messages are not reassembled. |
+| `html` | partial | Extracts elements by CSS selector, returning inner HTML, text or attributes, as one message per match or one message holding an array. The selector engine covers type, id, class, attribute, descendant, child and comma groups. Pseudo-classes, pseudo-elements, sibling combinators and the ~= and \|= attribute operators are refused at deploy time rather than ignored, because a selector that quietly drops its :nth-child matches the wrong elements and keeps working. Returned HTML is re-rendered from the parse tree, so it is normalised markup rather than the original bytes. |
 | `json` | partial | Conversion in both directions is supported. Schema validation against msg.schema is not implemented in this build. Ignored properties: `schema`. |
+| `xml` | partial | Both directions, using xml2js's object convention: attributes under the key named by "attr" (default $), element text under "chr" (default _), and every child element as an array, which is xml2js's own explicitArray default. Set ew_explicitArray to false to collapse single children instead. The per-message msg.options that Node-RED passes through to xml2js is not honoured — the other xml2js options change the shape of the output, and silently ignoring one would produce an object the flow does not expect while looking like it worked. Namespaces are kept as part of the element name rather than being resolved. Ignored properties: `options`. |
+| `yaml` | full | Conversion in both directions, toggling on the value's type when no action is set, as Node-RED's does. |
 
 ## Sequence
 

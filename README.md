@@ -92,7 +92,7 @@ with zero lost updates.
 Being straight about this, the way the EmberRTOS README is.
 
 **Runs.** `emberwire` starts, serves the API and the editor, loads flows off the
-PVC and moves messages. The chart deploys it three ways. 33 node types.
+PVC and moves messages. The chart deploys it three ways. 36 node types.
 
 **Done and tested.** The engine — message model, property expressions, the v1
 flow parser, the scheduler with back-pressure, Catch/Status/Complete with the
@@ -110,9 +110,8 @@ is the escaping bug that would otherwise fragment a series silently.
 **Race detector: clean**, every package, on Linux with cgo.
 
 **Not done yet.** HTTP In/Response/Request, WebSocket, TCP and UDP nodes. File
-and watch nodes. XML, YAML and HTML parsers. Subflow execution — subflows parse
-and round-trip but instances do not run yet. Registering the chart in the
-dashboard's `HelmRepoURLs`.
+and watch nodes. Subflow execution — subflows parse and round-trip but instances
+do not run yet. Registering the chart in the dashboard's `HelmRepoURLs`.
 
 **Still not benchmarked against Node-RED.** Every number in this README is
 Emberwire measured on my box. The comparison numbers do not exist because I have
