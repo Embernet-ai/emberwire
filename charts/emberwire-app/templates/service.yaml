@@ -5,12 +5,11 @@ metadata:
   namespace: {{ .Release.Namespace }}
   labels:
     {{- include "emberwire-app.labels" . | nindent 4 }}
-    {{- /* THE BIG FIVE on the Service too. The dashboard's /api/apps/services
+    {{- /* THE BIG FOUR on the Service too. The dashboard's /api/apps/services
            endpoint queries Services by embernet.ai/store-app=true to fill the
            Running Apps panel; labels on the pod alone make the app show in node
            detail and stay invisible in the catalogue. */}}
     {{- include "emberwire-app.storeLabels" . | nindent 4 }}
-    {{- include "emberwire-app.tenantLabels" . | nindent 4 }}
   {{- $ann := include "emberwire-app.storeAnnotations" . }}
   {{- if trim $ann }}
   annotations:

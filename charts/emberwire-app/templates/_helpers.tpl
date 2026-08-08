@@ -39,9 +39,9 @@ app: {{ include "emberwire-app.fullname" . }}
 {{- end }}
 
 {{/*
-EmberNET Store discovery labels — THE BIG FIVE.
+EmberNET Store discovery labels — THE BIG FOUR.
 
-On the pod template AND the Service. All five, always. Miss one and the app is
+On the pod template AND the Service. All four, always. Miss one and the app is
 invisible to the dashboard; miss them on the Service specifically and it shows
 in node detail but not in Running Apps.
 */}}
@@ -50,7 +50,6 @@ embernet.ai/store-app: "true"
 embernet.ai/gui-type: {{ .Values.gui.type | default "web" | quote }}
 embernet.ai/app-name: {{ include "emberwire-app.name" . | quote }}
 embernet.ai/gui-port: {{ .Values.gui.port | default .Values.service.port | quote }}
-embernet.ai/chart-name: {{ .Chart.Name | quote }}
 {{- end }}
 
 {{/*
@@ -66,17 +65,6 @@ every node card shows the raw release name — the bug fixed in nodered-pod 2.2.
 {{- if not $dn }}{{- $dn = .Values.gui.displayName -}}{{- end }}
 {{- if $dn }}
 embernet.ai/display-name: {{ $dn | quote }}
-{{- end }}
-{{- end }}
-
-{{/*
-Tenant labels, injected by the dashboard. Must be on BOTH the pod template and
-the Service, or the app is visible only to SuperAdmin — the most common silent
-App Store failure. A no-op on a bare helm install.
-*/}}
-{{- define "emberwire-app.tenantLabels" -}}
-{{- with .Values.tenantLabels }}
-{{- toYaml . }}
 {{- end }}
 {{- end }}
 

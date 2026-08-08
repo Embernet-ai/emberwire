@@ -24,14 +24,30 @@ jobs:
         run: helm lint charts/emberwire-app
 
       - name: Store labels are on the pod AND the Service
-        # THE BIG FIVE, twice. Labels on the pod alone make the app show in node
-        # detail and stay invisible in the Running Apps catalogue, which is the
-        # most common silent App Store failure and is not visible from the chart.
+        # THE BIG FOUR, twice — the set defined by the canonical embernet-app
+        # template in helm-chart-temps, and nothing beyond it. Labels on the pod
+        # alone make the app show in node detail and stay invisible in the
+        # Running Apps catalogue, which is the most common silent App Store
+        # failure and is not visible from reading the chart.
         run: |
-          COUNT=$(helm template t charts/emberwire-app | grep -c 'embernet\.ai/store-app\|embernet\.ai/gui-type\|embernet\.ai/app-name\|embernet\.ai/gui-port\|embernet\.ai/chart-name')
+          COUNT=$(helm template t charts/emberwire-app | grep -c 'embernet\.ai/store-app\|embernet\.ai/gui-type\|embernet\.ai/app-name\|embernet\.ai/gui-port')
           echo "store labels rendered: $COUNT"
-          if [ "$COUNT" -ne 10 ]; then
-            echo "::error::expected 10 store labels (5 on the pod, 5 on the Service), found $COUNT"
+          if [ "$COUNT" -ne 8 ]; then
+            echo "::error::expected 8 store labels (4 on the pod, 4 on the Service), found $COUNT"
+            exit 1
+          fi
+
+      - name: No store labels beyond the canonical set
+        # An extra embernet.ai/* label on the workload is not additive, it is
+        # drift. The dashboard reads a fixed set; anything else is dead weight
+        # that the next person has to work out the provenance of. This chart
+        # shipped an invented embernet.ai/chart-name and a tenantLabels helper
+        # until they were removed — nothing read either, and the tenant label is
+        # the dashboard's to apply, not the chart's.
+        run: |
+          EXTRA=$(helm template t charts/emberwire-app             | grep -oE 'embernet\.ai/[a-z-]+'             | sort -u             | grep -vE 'embernet\.ai/(store-app|gui-type|app-name|gui-port|display-name|app-icon)$' || true)
+          if [ -n "$EXTRA" ]; then
+            echo "::error::chart renders embernet.ai labels outside the canonical set: $EXTRA"
             exit 1
           fi
 

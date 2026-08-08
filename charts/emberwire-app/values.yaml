@@ -56,7 +56,6 @@ gui:
 embernet:
   displayName: ""
 
-tenantLabels: {}
 
 # ── Networking ───────────────────────────────────────────────────────────────
 # Three modes. This is the reason Emberwire exists on a plant floor: a flow

@@ -150,15 +150,20 @@ Stage by path.
 
 ## App Store contract — non-negotiable, verified against the real charts
 
-- **THE BIG FIVE** store labels on the pod **and** the Service. Ten rendered
-  total; CI fails the publish if that number moves. Labels on the pod alone make
-  an app show in node detail and stay invisible in Running Apps — the most
-  common silent failure in the catalogue and invisible from reading the chart.
+- **THE BIG FOUR** store labels — `store-app`, `gui-type`, `app-name`,
+  `gui-port` — on the pod **and** the Service. Eight rendered total. The set is
+  defined by the canonical `embernet-app` template in `helm-chart-temps`; CI
+  fails the publish if the count moves **or if the chart renders any
+  `embernet.ai/*` label outside that set**. Labels on the pod alone make an app
+  show in node detail and stay invisible in Running Apps.
 - `name` and `fullname` forced to `.Release.Name` for FQDN proxy routing.
 - `storeAnnotations` reads `.Values.embernet.displayName` **first**,
   `.Values.gui.displayName` only as fallback.
-- `tenantLabels` on both pod and Service, or the app is visible only to
-  SuperAdmin.
+- **Tenancy is the dashboard's job, not the chart's.** It labels the HelmChart
+  CR (`store.go:1366`) and the Fleet Bundle (`store.go:1192`), and reads the
+  tenant back off the Service (`services.go:147`). The canonical template has
+  no `tenantLabels` helper and neither does nodered-pod. Do not add one — a
+  store chart that invents its own tenancy is drift, not defence in depth.
 - Chart name must not contain `pod`. Ours is `emberwire-app`.
 - Service `ClusterIP`, `sessionAffinity: ClientIP` — the editor holds a
   websocket.
