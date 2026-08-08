@@ -3,6 +3,10 @@ name: emberwire-app
 description: Emberwire — a flow engine for EmberNET. Node-RED's idea, one static Go binary.
 type: application
 
+# Both are placeholders. helm-publish packages with --version and
+# --app-version taken from the git tag, so the tag is the only thing that
+# decides what a release is called. Bumping these by hand changes nothing
+# published and only creates a second answer to the same question.
 version: 0.1.0
 appVersion: "0.1.0"
 

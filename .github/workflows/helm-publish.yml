@@ -1,11 +1,20 @@
 name: Publish Helm Chart
 
+# Version tags only, same rule as the image.
+#
+# A chart published off a branch push has whatever version Chart.yaml happened
+# to say at the time, so two different charts can claim the same version and the
+# index quietly serves the second one. The tag is the version — it is written
+# into Chart.yaml at package time, so the chart and the image it references can
+# never disagree.
 on:
   push:
-    branches: [main]
-    paths:
-      - 'charts/**'
+    tags: ['v*']
   workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Existing version tag to publish, e.g. v0.1.0'
+        required: true
 
 permissions:
   contents: write
@@ -93,13 +102,29 @@ jobs:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
+          ref: ${{ inputs.tag || github.ref }}
 
       - uses: azure/setup-helm@v4
 
-      - name: Package
+      - name: Refuse to publish anything that is not a version tag
         run: |
+          REF='${{ inputs.tag || github.ref_name }}'
+          case "$REF" in
+            v[0-9]*) echo "publishing $REF" ;;
+            *) echo "::error::refusing to publish '$REF' — charts are published from version tags only"; exit 1 ;;
+          esac
+
+      - name: Package at the tagged version
+        # --version and --app-version rather than editing Chart.yaml in the
+        # repo: the tag is the single source of truth for what this release is,
+        # and a committed version that drifts from the tag is how an index ends
+        # up with two different charts claiming one version.
+        run: |
+          VERSION='${{ inputs.tag || github.ref_name }}'
+          VERSION="${VERSION#v}"
           mkdir -p .deploy
-          helm package charts/emberwire-app -d .deploy
+          helm package charts/emberwire-app -d .deploy \
+            --version "$VERSION" --app-version "$VERSION"
 
       - name: Build the index
         # Current-version-only: do NOT merge the live index. Merging carries

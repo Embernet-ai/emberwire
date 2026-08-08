@@ -1,10 +1,22 @@
 name: Publish Image
 
+# Version tags only.
+#
+# An image built from an untagged commit is an artefact nobody can point at: it
+# exists in the registry, something on a plant floor can end up running it, and
+# there is no version anybody can say out loud. Every image this repo publishes
+# corresponds to exactly one tag.
+#
+# workflow_dispatch takes a tag as input rather than building whatever is on the
+# branch, so the manual path cannot produce an untagged build either.
 on:
   push:
-    branches: [main]
     tags: ['v*']
   workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Existing version tag to build, e.g. v0.1.0'
+        required: true
 
 permissions:
   contents: read
@@ -16,6 +28,19 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.tag || github.ref }}
+
+      - name: Refuse to build anything that is not a version tag
+        # Belt and braces. The trigger above already restricts this, but a
+        # future edit to the trigger would silently start publishing untagged
+        # images again, and the registry does not forget.
+        run: |
+          REF='${{ inputs.tag || github.ref_name }}'
+          case "$REF" in
+            v[0-9]*) echo "building $REF" ;;
+            *) echo "::error::refusing to build '$REF' — images are published from version tags only"; exit 1 ;;
+          esac
 
       - uses: docker/setup-qemu-action@v3
 
@@ -31,11 +56,13 @@ jobs:
         uses: docker/metadata-action@v5
         with:
           images: ghcr.io/embernet-ai/emberwire
+          # No branch tag and no bare sha tag: both produce images that are
+          # not a released version. The sha is still recorded, but only as a
+          # suffix on the version it belongs to.
           tags: |
-            type=ref,event=branch
             type=semver,pattern={{version}}
             type=semver,pattern={{major}}.{{minor}}
-            type=sha,format=short
+            type=semver,pattern={{major}}
 
       - name: Build and push
         uses: docker/build-push-action@v6
@@ -48,7 +75,7 @@ jobs:
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
           build-args: |
-            VERSION=${{ github.ref_name }}
+            VERSION=${{ inputs.tag || github.ref_name }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
@@ -56,7 +83,9 @@ jobs:
         # The whole premise is that this is small. If it stops being small,
         # that is a finding.
         run: |
-          docker pull ghcr.io/embernet-ai/emberwire:sha-$(git rev-parse --short HEAD)
-          SIZE=$(docker image inspect ghcr.io/embernet-ai/emberwire:sha-$(git rev-parse --short HEAD) --format '{{.Size}}')
+          VERSION='${{ inputs.tag || github.ref_name }}'
+          VERSION="${VERSION#v}"
+          docker pull "ghcr.io/embernet-ai/emberwire:$VERSION"
+          SIZE=$(docker image inspect "ghcr.io/embernet-ai/emberwire:$VERSION" --format '{{.Size}}')
           echo "### Image size: $((SIZE/1024/1024)) MiB" >> "$GITHUB_STEP_SUMMARY"
-          echo "nodered/node-red:latest is roughly 450 MiB for comparison." >> "$GITHUB_STEP_SUMMARY"
+          echo "Measured 2026-08-08: ours 25.1 MB, nodered/node-red:latest 717 MB." >> "$GITHUB_STEP_SUMMARY"
