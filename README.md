@@ -109,10 +109,17 @@ is the escaping bug that would otherwise fragment a series silently.
 
 **Race detector: clean**, every package, on Linux with cgo.
 
-**Not done yet.** Subflow execution — subflows parse and round-trip but
-instances do not run yet. Registering the chart in the dashboard's
-`HelmRepoURLs`. Partial deploy: a redeploy currently restarts every node rather
-than only the ones that changed.
+**Subflows run.** Each instance gets its own copy of the template's nodes, its
+own flow context, and its own resolved properties — the same template renders
+`4.2 bar` in one instance and `4.2 kPa` in the next, which is verified end to
+end through a real deploy rather than in a unit test. Nesting works, an error
+nobody caught inside a subflow reaches the Catch node on the calling tab, and a
+configuration node declared inside a template is shared by every instance rather
+than opening a connection per copy.
+
+**Not done yet.** Registering the chart in the dashboard's `HelmRepoURLs`.
+Partial deploy: a redeploy currently restarts every node rather than only the
+ones that changed. Link Call, and the JSONata expression engine.
 
 **Still not benchmarked against Node-RED.** Every number in this README is
 Emberwire measured on my box. The comparison numbers do not exist because I have

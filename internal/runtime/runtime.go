@@ -45,9 +45,19 @@ const (
 
 // Runtime owns a running flow graph.
 type Runtime struct {
-	reg   *node.Registry
+	reg *node.Registry
+
+	// flows is the graph that runs: the parsed flow file with every subflow
+	// instance replaced by a copy of its template. For a flow set with no
+	// subflows it is the parsed file itself.
 	flows *engine.Flows
-	opts  Options
+
+	// expansion carries what instantiating the subflows produced besides the
+	// graph — the environment chain per node, and which scope contains which
+	// instance.
+	expansion *engine.Expansion
+
+	opts Options
 
 	ctx    context.Context
 	cancel context.CancelFunc
@@ -109,15 +119,39 @@ type completeHandler struct {
 
 // New builds a runtime for a parsed flow set. Nothing starts until Start.
 func New(reg *node.Registry, flows *engine.Flows, opts Options) *Runtime {
+	// Subflows are instantiated here rather than at start, so a caller can read
+	// the warnings before anything runs and so Start has one kind of graph to
+	// walk instead of two.
+	expansion := engine.ExpandSubflows(flows)
+
 	return &Runtime{
-		reg:      reg,
-		flows:    flows,
-		opts:     opts.withDefaults(),
-		runners:  map[string]*runner{},
-		configs:  map[string]node.Node{},
-		contexts: store.NewScopedContexts(),
-		events:   make(chan Event, 1024),
+		reg:       reg,
+		flows:     expansion.Flows,
+		expansion: expansion,
+		opts:      opts.withDefaults(),
+		runners:   map[string]*runner{},
+		configs:   map[string]node.Node{},
+		contexts:  store.NewScopedContexts(),
+		events:    make(chan Event, 1024),
 	}
+}
+
+// Warnings returns anything the subflow expansion found worth saying: a template
+// declaring more inputs than a v1 wire can address, an output wired from a node
+// that is not in the template, a subflow that contains itself.
+func (rt *Runtime) Warnings() []string {
+	if rt.expansion == nil {
+		return nil
+	}
+	return rt.expansion.Warnings
+}
+
+// Instances returns the scope id of every expanded subflow instance.
+func (rt *Runtime) Instances() []string {
+	if rt.expansion == nil {
+		return nil
+	}
+	return rt.expansion.Instances
 }
 
 // SetContexts replaces the context stores, which is how a persistent store is
@@ -239,6 +273,21 @@ func (rt *Runtime) scopeEnabled(z string) bool {
 
 // build instantiates one node from its flow entry.
 func (rt *Runtime) build(n *engine.Node) (node.Node, error) {
+	if tmpl, isInstance := n.SubflowTemplateID(); isInstance {
+		// The instance node survives expansion as the entry point: upstream
+		// wires still target its id, and its own wires now point at the copies
+		// of the nodes the template's input feeds. All it has to do is forward.
+		//
+		// Built here rather than registered as a node type because it has no
+		// edit dialog, no palette entry and no compatibility story. Registering
+		// it would put scheduler plumbing in the editor's palette and in the
+		// compatibility matrix.
+		if _, ok := rt.flows.Subflows[tmpl]; !ok {
+			return nil, fmt.Errorf("subflow template %q is missing", tmpl)
+		}
+		return subflowEntry{}, nil
+	}
+
 	reg, ok := rt.reg.Lookup(n.Type)
 	if !ok {
 		return nil, fmt.Errorf("unknown node type %q", n.Type)
@@ -530,6 +579,13 @@ func (rt *Runtime) raiseError(from *runner, err error, msg *engine.Msg) {
 	}})
 
 	targets := rt.selectHandlers(rt.catches, from)
+	if len(targets) == 0 {
+		// Nothing inside this scope handled it. If the scope is a subflow
+		// instance, the flow that called it gets the chance — otherwise an
+		// error inside a subflow is invisible to the flow using it, and the
+		// Catch node the author put on the tab never fires.
+		targets = rt.selectHandlersInCallingFlow(from)
+	}
 	for _, h := range targets {
 		var out *engine.Msg
 		if msg != nil {
@@ -551,6 +607,49 @@ func (rt *Runtime) raiseError(from *runner, err error, msg *engine.Msg) {
 		out.Data["_errorDepth"] = float64(depth + 1)
 		h.r.enqueue(rt.ctx, out, from)
 	}
+}
+
+// selectHandlersInCallingFlow walks out through the subflow instances containing
+// a node, looking for a Catch node in an enclosing flow.
+//
+// Node-RED propagates an uncaught subflow error to the parent this way. The
+// handler is selected against the instance node rather than the failing node, so
+// the group-distance rule is applied where the subflow actually sits on the
+// calling tab.
+func (rt *Runtime) selectHandlersInCallingFlow(from *runner) []*handler {
+	if rt.expansion == nil {
+		return nil
+	}
+	scope := from.z
+	for range maxSubflowDepth {
+		parent, ok := rt.expansion.ParentScope[scope]
+		if !ok {
+			return nil
+		}
+		// An instance's scope id is the instance node's id, so the runner
+		// standing in for the subflow on the calling tab is found directly.
+		caller, ok := rt.runners[scope]
+		if !ok {
+			return nil
+		}
+		if targets := rt.selectHandlers(rt.catches, caller); len(targets) > 0 {
+			return targets
+		}
+		scope = parent
+	}
+	return nil
+}
+
+// maxSubflowDepth bounds the walk out of nested subflows. It matches the bound
+// the expansion applies, so a graph that expanded at all cannot loop here.
+const maxSubflowDepth = 32
+
+// subflowEntry forwards a message into a subflow instance's internals.
+type subflowEntry struct{}
+
+func (subflowEntry) Receive(_ context.Context, m *engine.Msg, out node.Emitter) error {
+	out.Send(0, m)
+	return nil
 }
 
 // onStatus routes a status change to Status nodes watching the reporting node,
@@ -768,24 +867,53 @@ func (s *services) ConfigNode(id string) (node.Node, bool) {
 	return n, ok
 }
 
-// Env resolves an environment variable, innermost scope first: the node's
-// containing subflow instance or tab, then the process environment.
+// Env resolves an environment variable, innermost scope first.
+//
+// For a node inside a subflow that means the instance's own properties, then the
+// template's defaults, then the properties of whatever instance contains that
+// one, and so on out to the tab and finally the process environment. This is
+// Node-RED's _path resolution, and it is the mechanism that makes one template
+// behave differently per instance — without it, subflow properties are
+// decoration.
 func (s *services) Env(name string) (string, bool) {
-	if tab, ok := s.rt.flows.Tabs[s.z]; ok {
-		for _, ev := range tab.Env {
-			if ev.Name == name {
-				return fmt.Sprint(ev.Value), true
+	if s.rt.expansion != nil {
+		for _, scope := range s.rt.expansion.EnvChains[s.nodeID] {
+			if v, ok := lookupEnvVar(scope.Vars, name); ok {
+				return v, true
 			}
+		}
+	}
+	if tab, ok := s.rt.flows.Tabs[s.z]; ok {
+		if v, ok := lookupEnvVar(tab.Env, name); ok {
+			return v, true
 		}
 	}
 	if sf, ok := s.rt.flows.Subflows[s.z]; ok {
-		for _, ev := range sf.Env {
-			if ev.Name == name {
-				return fmt.Sprint(ev.Value), true
-			}
+		if v, ok := lookupEnvVar(sf.Env, name); ok {
+			return v, true
 		}
 	}
 	return lookupProcessEnv(name)
+}
+
+// lookupEnvVar reads one variable out of a scope.
+//
+// A variable typed "env" is an indirection: the instance said "take this from
+// the environment of whoever called me", which is how a nested subflow forwards
+// a property it was handed without knowing its value. Answering here would
+// return the name of the variable instead of its value, so the next frame out
+// gets the question.
+func lookupEnvVar(vars []engine.EnvVar, name string) (string, bool) {
+	for _, ev := range vars {
+		if ev.Name != name {
+			continue
+		}
+		if ev.Type == node.TypeEnv || ev.Value == nil {
+			return "", false
+		}
+		return fmt.Sprint(ev.Value), true
+	}
+	return "", false
 }
 
 func (s *services) Log(level node.LogLevel, msg string, args ...any) {

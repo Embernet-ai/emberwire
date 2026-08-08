@@ -287,6 +287,12 @@ func (a *application) start(ctx context.Context, flows *engine.Flows) []runtime.
 	pumpCtx, cancel := context.WithCancel(ctx)
 	go a.pump(pumpCtx, rt)
 
+	// Said before starting: an operator whose subflow declares an unreachable
+	// input should find out at boot, not from a message that never arrives.
+	for _, w := range rt.Warnings() {
+		a.log.Warn("subflow warning", "detail", w)
+	}
+
 	failures := rt.Start(ctx)
 	for _, f := range failures {
 		a.log.Error("node failed to start", "node", f.NodeID, "type", f.Type, "error", f.Err)
@@ -298,8 +304,19 @@ func (a *application) start(ctx context.Context, flows *engine.Flows) []runtime.
 	a.mu.Unlock()
 
 	a.log.Info("flows started",
-		"nodes", len(flows.Nodes), "tabs", len(flows.Tabs), "failures", len(failures))
+		"nodes", len(flows.Nodes), "tabs", len(flows.Tabs),
+		"subflowInstances", len(rt.Instances()), "failures", len(failures))
 	return failures
+}
+
+// warnings returns the running runtime's subflow warnings, for the deploy
+// response. The editor shows them next to the per-node failures.
+func (a *application) warnings() []string {
+	rt := a.currentRuntime()
+	if rt == nil {
+		return nil
+	}
+	return rt.Warnings()
 }
 
 // pump forwards runtime events to connected editors.
@@ -397,7 +414,7 @@ func (a *application) deploy(ctx context.Context, flows *engine.Flows, expectedR
 	a.log.Info("deployed", "rev", rev, "failures", len(failures))
 	return api.DeployResult{
 		Rev:      rev,
-		Warnings: flows.Warnings,
+		Warnings: append(append([]string(nil), flows.Warnings...), a.warnings()...),
 		Failures: failures,
 	}, nil
 }
@@ -454,12 +471,20 @@ func cmdImport(args []string) error {
 		return err
 	}
 
+	// Counted against the expanded graph rather than the file, so a subflow
+	// whose internals need a node this build does not have is reported. Counting
+	// the file would call an instance "supported" and say nothing about what is
+	// inside it, which is exactly the report an operator would act on and then
+	// find out the hard way.
+	expansion := engine.ExpandSubflows(flows)
+	graph := expansion.Flows
+
 	supported := map[string]int{}
 	unsupported := map[string]int{}
 	partial := map[string]string{}
 
-	for _, id := range flows.Order {
-		n, ok := flows.Nodes[id]
+	for _, id := range graph.Order {
+		n, ok := graph.Nodes[id]
 		if !ok {
 			continue
 		}
@@ -479,12 +504,18 @@ func cmdImport(args []string) error {
 	}
 
 	fmt.Printf("%s\n\n", fs.Arg(0))
-	fmt.Printf("  %d entries: %d nodes, %d tabs, %d subflows, %d groups\n\n",
+	fmt.Printf("  %d entries: %d nodes, %d tabs, %d subflows, %d groups\n",
 		len(flows.Order), len(flows.Nodes), len(flows.Tabs), len(flows.Subflows), len(flows.Groups))
+	if n := len(expansion.Instances); n > 0 {
+		fmt.Printf("  %d subflow instance(s), expanding to %d nodes in total\n",
+			n, len(graph.Nodes))
+	}
+	fmt.Println()
 
-	if len(flows.Warnings) > 0 {
+	warnings := append(append([]string(nil), flows.Warnings...), expansion.Warnings...)
+	if len(warnings) > 0 {
 		fmt.Printf("Warnings\n")
-		for _, w := range flows.Warnings {
+		for _, w := range warnings {
 			fmt.Printf("  - %s\n", w)
 		}
 		fmt.Println()

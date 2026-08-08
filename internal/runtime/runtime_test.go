@@ -50,6 +50,16 @@ func (s *sinkNode) count() int {
 	return len(s.msgs)
 }
 
+// last returns the most recently received message.
+func (s *sinkNode) last() *engine.Msg {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if len(s.msgs) == 0 {
+		return nil
+	}
+	return s.msgs[len(s.msgs)-1]
+}
+
 func (s *sinkNode) all() []*engine.Msg {
 	s.mu.Lock()
 	defer s.mu.Unlock()
@@ -1029,6 +1039,266 @@ func TestStopWaitsForDeferredWork(t *testing.T) {
 	if got := sink.count(); got != n {
 		t.Errorf("sink received %d of %d deferred messages; the shutdown ran ahead of "+
 			"work that was outstanding on a timer", got, n)
+	}
+}
+
+// ---------------------------------------------------------------------------
+// Subflows
+// ---------------------------------------------------------------------------
+
+// envNode reports what an environment variable resolves to for the node's own
+// position in the graph, which is what a subflow property has to control.
+type envNode struct {
+	name string
+	svc  node.Services
+}
+
+func (n *envNode) Receive(_ context.Context, m *engine.Msg, out node.Emitter) error {
+	v, ok := n.svc.Env(n.name)
+	if !ok {
+		v = "(unset)"
+	}
+	m.SetPayload(v)
+	out.Send(0, m)
+	return nil
+}
+
+// countNode increments a flow-scoped counter and reports the new value, which is
+// how a test tells shared flow context from separate flow context.
+type countNode struct{ svc node.Services }
+
+func (n *countNode) Receive(_ context.Context, m *engine.Msg, out node.Emitter) error {
+	v, err := n.svc.Context(node.ScopeFlow).Increment("seen", 1)
+	if err != nil {
+		return err
+	}
+	m.SetPayload(v)
+	out.Send(0, m)
+	return nil
+}
+
+// addServiceType registers a node type whose factory is handed the runtime
+// services. testRegistry.add deliberately does not expose them, because every
+// other test builds nodes that do not need any.
+func addServiceType(tr *testRegistry, typ string, build func(def *node.Definition) node.Node) {
+	d := node.Descriptor{
+		Type:          typ,
+		Category:      node.CategoryCommon,
+		Color:         "#E31837",
+		Icon:          "cog",
+		Inputs:        1,
+		Outputs:       1,
+		Compatibility: node.Compatibility{Level: node.CompatOnly},
+	}
+	err := tr.Register(d, func(def *node.Definition) (node.Node, error) {
+		n := build(def)
+		tr.instances[def.Node.ID] = n
+		return n, nil
+	})
+	if err != nil {
+		panic(err)
+	}
+}
+
+// TestSubflowInstanceRunsEndToEnd is the test that says subflows execute.
+//
+// A message injected on the tab has to enter the instance, cross the copy of the
+// template's internals, and come back out to the node wired after the instance.
+// Before this, subflows parsed and rendered and did nothing.
+func TestSubflowInstanceRunsEndToEnd(t *testing.T) {
+	tr := newTestRegistry()
+	sink := &sinkNode{}
+	tr.add("pass", 1, 1, func(string) node.Node { return passNode{} })
+	tr.add("tag", 1, 1, func(string) node.Node { return mutateNode{tag: "inside"} })
+	tr.add("sink", 1, 0, func(string) node.Node { return sink })
+
+	flows := mustFlows(t, `[
+        {"id":"t1","type":"tab","label":"T"},
+        {"id":"sf","type":"subflow","name":"S",
+         "in":[{"wires":[{"id":"a"}]}],
+         "out":[{"wires":[{"id":"b","port":0}]}]},
+        {"id":"a","type":"tag","z":"sf","x":1,"y":1,"wires":[["b"]]},
+        {"id":"b","type":"pass","z":"sf","x":2,"y":1,"wires":[[]]},
+        {"id":"inst","type":"subflow:sf","z":"t1","x":1,"y":1,"wires":[["s"]]},
+        {"id":"s","type":"sink","z":"t1","x":2,"y":1,"wires":[]}
+    ]`)
+
+	rt := New(tr.Registry, flows, Options{})
+	drain(rt)
+	if fails := rt.Start(context.Background()); len(fails) > 0 {
+		t.Fatalf("start failures: %v", fails)
+	}
+	defer rt.Stop(context.Background())
+
+	rt.Inject("inst", engine.NewMsgWithPayload(map[string]any{"v": float64(1)}))
+
+	waitFor(t, "the message to cross the subflow", func() bool { return sink.count() == 1 })
+	got := sink.last()
+	payload, ok := got.Payload().(map[string]any)
+	if !ok || payload["seen"] != "inside" {
+		t.Fatalf("payload = %#v; the message did not go through the template's nodes", got.Payload())
+	}
+}
+
+// Two instances of one template must not share state, and each must resolve its
+// own properties. Without both, a subflow is a copy-paste that looks like a
+// function.
+func TestSubflowInstancesAreIndependent(t *testing.T) {
+	tr := newTestRegistry()
+	sink := &sinkNode{}
+	addServiceType(tr, "readenv", func(def *node.Definition) node.Node {
+		return &envNode{name: "UNIT", svc: def.Services}
+	})
+	tr.add("sink", 1, 0, func(string) node.Node { return sink })
+
+	flows := mustFlows(t, `[
+        {"id":"t1","type":"tab","label":"T"},
+        {"id":"sf","type":"subflow","name":"S",
+         "in":[{"wires":[{"id":"e"}]}],
+         "out":[{"wires":[{"id":"e","port":0}]}],
+         "env":[{"name":"UNIT","type":"str","value":"default"}]},
+        {"id":"e","type":"readenv","z":"sf","x":1,"y":1,"wires":[[]]},
+        {"id":"bar","type":"subflow:sf","z":"t1","x":1,"y":1,"wires":[["s"]],
+         "env":[{"name":"UNIT","type":"str","value":"bar"}]},
+        {"id":"psi","type":"subflow:sf","z":"t1","x":1,"y":2,"wires":[["s"]],
+         "env":[{"name":"UNIT","type":"str","value":"psi"}]},
+        {"id":"plain","type":"subflow:sf","z":"t1","x":1,"y":3,"wires":[["s"]]},
+        {"id":"s","type":"sink","z":"t1","x":2,"y":1,"wires":[]}
+    ]`)
+
+	rt := New(tr.Registry, flows, Options{})
+	drain(rt)
+	if fails := rt.Start(context.Background()); len(fails) > 0 {
+		t.Fatalf("start failures: %v", fails)
+	}
+	defer rt.Stop(context.Background())
+
+	for _, id := range []string{"bar", "psi", "plain"} {
+		rt.Inject(id, engine.NewMsg())
+	}
+	waitFor(t, "all three instances to answer", func() bool { return sink.count() == 3 })
+
+	seen := map[string]bool{}
+	for _, m := range sink.all() {
+		s, _ := m.Payload().(string)
+		seen[s] = true
+	}
+	for _, want := range []string{"bar", "psi", "default"} {
+		if !seen[want] {
+			t.Errorf("no instance resolved UNIT to %q; got %v", want, seen)
+		}
+	}
+}
+
+// Two instances of a counting subflow must not share a counter. Flow context is
+// scoped to the instance, which is the whole reason each instance is its own
+// execution scope.
+func TestSubflowInstancesHaveSeparateFlowContext(t *testing.T) {
+	tr := newTestRegistry()
+	sink := &sinkNode{}
+	addServiceType(tr, "count", func(def *node.Definition) node.Node {
+		return &countNode{svc: def.Services}
+	})
+	tr.add("sink", 1, 0, func(string) node.Node { return sink })
+
+	flows := mustFlows(t, `[
+        {"id":"t1","type":"tab","label":"T"},
+        {"id":"sf","type":"subflow","name":"S",
+         "in":[{"wires":[{"id":"c"}]}],
+         "out":[{"wires":[{"id":"c","port":0}]}]},
+        {"id":"c","type":"count","z":"sf","x":1,"y":1,"wires":[[]]},
+        {"id":"a","type":"subflow:sf","z":"t1","x":1,"y":1,"wires":[["s"]]},
+        {"id":"b","type":"subflow:sf","z":"t1","x":1,"y":2,"wires":[["s"]]},
+        {"id":"s","type":"sink","z":"t1","x":2,"y":1,"wires":[]}
+    ]`)
+
+	rt := New(tr.Registry, flows, Options{})
+	drain(rt)
+	rt.Start(context.Background())
+	defer rt.Stop(context.Background())
+
+	// Three into one instance, one into the other. If the counter were shared
+	// the second instance would report 4.
+	for range 3 {
+		rt.Inject("a", engine.NewMsg())
+	}
+	waitFor(t, "the first instance's three messages", func() bool { return sink.count() == 3 })
+	rt.Inject("b", engine.NewMsg())
+	waitFor(t, "the second instance's message", func() bool { return sink.count() == 4 })
+
+	last := sink.last()
+	if got, _ := last.Payload().(float64); got != 1 {
+		t.Fatalf("the second instance counted %v; the two share flow context", got)
+	}
+}
+
+// An error nobody caught inside a subflow has to reach the Catch node the author
+// put on the tab. Otherwise a subflow is a place errors go to disappear.
+func TestUncaughtSubflowErrorReachesTheCallingFlow(t *testing.T) {
+	tr := newTestRegistry()
+	caught := &sinkNode{}
+	tr.add("boom", 1, 0, func(string) node.Node { return failNode{err: errors.New("inside the subflow")} })
+	tr.add("catch", 0, 1, func(string) node.Node { return passNode{} })
+	tr.add("sink", 1, 0, func(string) node.Node { return caught })
+
+	flows := mustFlows(t, `[
+        {"id":"t1","type":"tab","label":"T"},
+        {"id":"sf","type":"subflow","name":"S","in":[{"wires":[{"id":"x"}]}],"out":[]},
+        {"id":"x","type":"boom","z":"sf","x":1,"y":1,"wires":[]},
+        {"id":"inst","type":"subflow:sf","z":"t1","x":1,"y":1,"wires":[]},
+        {"id":"c","type":"catch","z":"t1","x":1,"y":2,"wires":[["s"]]},
+        {"id":"s","type":"sink","z":"t1","x":2,"y":2,"wires":[]}
+    ]`)
+
+	rt := New(tr.Registry, flows, Options{})
+	drain(rt)
+	rt.Start(context.Background())
+	defer rt.Stop(context.Background())
+
+	rt.Inject("inst", engine.NewMsg())
+	waitFor(t, "the error to reach the calling flow's catch node",
+		func() bool { return caught.count() == 1 })
+
+	errData, _ := caught.last().Data["error"].(map[string]any)
+	if errData == nil || errData["message"] != "inside the subflow" {
+		t.Fatalf("the caught error is %#v", caught.last().Data["error"])
+	}
+}
+
+// A Catch inside the subflow takes it first: the author who handled it there
+// meant to.
+func TestSubflowErrorPrefersACatchInsideTheSubflow(t *testing.T) {
+	tr := newTestRegistry()
+	inner := &sinkNode{}
+	outer := &sinkNode{}
+	tr.add("boom", 1, 0, func(string) node.Node { return failNode{err: errors.New("boom")} })
+	tr.add("catch", 0, 1, func(string) node.Node { return passNode{} })
+	tr.add("innerSink", 1, 0, func(string) node.Node { return inner })
+	tr.add("outerSink", 1, 0, func(string) node.Node { return outer })
+
+	flows := mustFlows(t, `[
+        {"id":"t1","type":"tab","label":"T"},
+        {"id":"sf","type":"subflow","name":"S","in":[{"wires":[{"id":"x"}]}],"out":[]},
+        {"id":"x","type":"boom","z":"sf","x":1,"y":1,"wires":[]},
+        {"id":"ic","type":"catch","z":"sf","x":1,"y":2,"wires":[["is"]]},
+        {"id":"is","type":"innerSink","z":"sf","x":2,"y":2,"wires":[]},
+        {"id":"inst","type":"subflow:sf","z":"t1","x":1,"y":1,"wires":[]},
+        {"id":"oc","type":"catch","z":"t1","x":1,"y":2,"wires":[["os"]]},
+        {"id":"os","type":"outerSink","z":"t1","x":2,"y":2,"wires":[]}
+    ]`)
+
+	rt := New(tr.Registry, flows, Options{})
+	drain(rt)
+	rt.Start(context.Background())
+	defer rt.Stop(context.Background())
+
+	rt.Inject("inst", engine.NewMsg())
+	waitFor(t, "the subflow's own catch node", func() bool { return inner.count() == 1 })
+
+	// Give the outer one every chance to fire before deciding it did not.
+	time.Sleep(50 * time.Millisecond)
+	if outer.count() != 0 {
+		t.Fatalf("the calling flow's catch node also fired %d time(s)", outer.count())
 	}
 }
 

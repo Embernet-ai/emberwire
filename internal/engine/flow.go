@@ -210,6 +210,13 @@ type Flows struct {
 	// these and so do we, but silently repairing a flow is how you lose a
 	// customer's work without telling them.
 	Warnings []string
+
+	// Expanded marks a graph produced by ExpandSubflows: the one the runtime
+	// executes, holding a copy of every subflow template's nodes under a derived
+	// id. It is not the graph to save, and render refuses to write it rather
+	// than trusting nobody will ever try — saving one would replace a
+	// customer's tidy subflow with its inlined guts, permanently.
+	Expanded bool
 }
 
 // ParseError is a fatal problem that prevents a flow file being loaded at all.
@@ -867,6 +874,10 @@ func (f *Flows) Marshal() ([]byte, error) {
 // whitespace without reordering keys — which is what lets an entry's original
 // bytes be re-indented into the output without losing the order they carry.
 func (f *Flows) render(indent string) ([]byte, error) {
+	if f.Expanded {
+		return nil, fmt.Errorf("this is an expanded graph, not a flow file: writing it " +
+			"would replace every subflow with a copy of its internals")
+	}
 	if len(f.Order) == 0 {
 		return []byte("[]"), nil
 	}
