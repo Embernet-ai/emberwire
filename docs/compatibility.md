@@ -32,13 +32,13 @@ appear to work while routing on a literal string.
 
 ## Summary
 
-42 node types registered.
+51 node types registered.
 
 | Level | Count |
 |---|---|
-| full | 9 |
-| partial | 20 |
-| divergent | 7 |
+| full | 10 |
+| partial | 26 |
+| divergent | 9 |
 | emberwire-only | 6 |
 
 ## Common
@@ -62,6 +62,8 @@ appear to work while routing on a literal string.
 | `emberwire-influxdb` | emberwire-only | Emberwire's own InfluxDB connection, targeting the App Store's influxdb-app. |
 | `emberwire-postgres` | emberwire-only | Emberwire's own PostgreSQL connection. Targets the App Store's postgresql-app and timescale-db-pod, which share a wire protocol. |
 | `mqtt-broker` | partial | Connection, credentials, TLS, clean session, keepalive, birth and close messages are supported. Will messages and MQTT v5 properties are not implemented in this build. Ignored properties: `willTopic`, `willPayload`, `protocolVersion:5`. |
+| `websocket-client` | partial | Connects out and reconnects on its own when the connection drops, in payload mode or whole-message mode. Per-node TLS configuration is not implemented; the system trust store is used. Ignored properties: `tls`. |
+| `websocket-listener` | partial | Serves a websocket path, in payload mode or whole-message mode. The path shares the flow route table with the HTTP In nodes, so it cannot shadow the editor or the admin API and cannot collide with another node's path. A client that stops reading is disconnected rather than queued without limit, which Node-RED does not do. |
 
 ## Discover
 
@@ -93,6 +95,13 @@ appear to work while routing on a literal string.
 | `http response` | partial | Status code and headers from the node or from msg.statusCode and msg.headers, with the payload as the body. Cookies set through msg.cookies are not implemented; set a Set-Cookie header instead. Ignored properties: `cookies`. |
 | `mqtt in` | partial | Topic subscription with QoS and payload decoding are supported. Dynamic subscription via a control message is not implemented. |
 | `mqtt out` | partial | Publishing with topic, QoS and retain from the node or the message is supported. MQTT v5 user properties are not implemented. |
+| `tcp in` | divergent | Listens or connects out, in stream mode with a delimiter or single mode collecting until the peer closes, with buffer, string or base64 payloads. Every message carries msg._session so a TCP Out node can reply on the same connection. Three bounds Node-RED does not have: the number of accepted connections, the size of one delimited message, and the total of a single-mode read. A peer that opens connections and never closes them, or sends without ever sending the delimiter, grows the heap until the pod dies otherwise. TLS is not implemented. Ignored properties: `tls`. |
+| `tcp out` | partial | Connects to a host and sends, or replies on the connection a TCP In node accepted, found through msg._session. Listening for inbound connections purely to write to them, which Node-RED's third mode does, is not implemented — use a TCP In node for the listening half and this node in reply mode. TLS is not implemented. Ignored properties: `tls`. |
+| `tcp request` | partial | Connects, sends the payload and waits for the reply, in any of Node-RED's four wait modes: a fixed time, a delimiter, a byte count, or until the peer closes. msg.host and msg.port override the node. Every request opens its own connection — Node-RED's connection-reuse mode is not implemented, and reusing one would change the semantics of the wait modes, which all end at a connection boundary. TLS is not implemented. Ignored properties: `tls`. |
+| `udp in` | partial | Receives datagrams, optionally joining a multicast group, with buffer, string or base64 payloads and the sender's address on msg.ip and msg.port. IPv6 and per-node interface selection are not implemented in this build. Ignored properties: `ipv6`. |
+| `udp out` | partial | Sends datagrams to a host, a broadcast address or a multicast group, with msg.ip and msg.port overriding the node. IPv6 is not implemented in this build. Ignored properties: `ipv6`. |
+| `websocket in` | full | Emits a message per frame, carrying msg._session so a WebSocket Out node can reply to the connection it came from. |
+| `websocket out` | divergent | Replies to the connection named by msg._session, or broadcasts to every open connection when there is none, as Node-RED does. The divergence is what happens when a connection cannot keep up: the frame is refused to a Catch node and the connection is closed, rather than queued without limit. Blocking instead would push back-pressure from a slow browser into the flow's scheduler, which is a worse failure than losing a connection that had already stopped reading. |
 
 ## Parser
 

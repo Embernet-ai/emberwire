@@ -346,6 +346,7 @@ func (a *application) stop(ctx context.Context) {
 	// not run.
 	nodes.Links.Reset()
 	nodes.Routes.Reset()
+	nodes.TCPReplies.Reset()
 }
 
 // deploy replaces the running flows.
