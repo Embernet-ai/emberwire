@@ -27,7 +27,18 @@ Read `README.md`, `docs/compatibility.md` and `docs/bench/README.md` first. Then
 `git log` — the commit messages carry the reasoning for every non-obvious
 decision and are worth more than any summary.
 
-## State: 23 commits, ~30,000 lines of Go, 51 node types
+## State: shipped. v0.1.0, public, and the whole chain resolves
+
+`github.com/Embernet-ai/emberwire` — public. Image
+`ghcr.io/embernet-ai/emberwire:0.1.0`, 25.1 MB, amd64 and arm64. Chart at
+`https://embernet-ai.github.io/emberwire/`, verified by `helm repo add` and a
+render off the published tarball. Registered in the dashboard's `HelmRepoURLs`
+and `multiInstanceChart()`.
+
+**It has still never run on a plant floor.** Shepherd Boy Farms is the intended
+first site. Everything below the deploy line is unproven in the field.
+
+## ~30,000 lines of Go, 51 node types
 
 **The palette is complete.** Everything Node-RED ships that is not a community
 node is implemented, and every gap is written into `docs/compatibility.md` with
@@ -60,6 +71,13 @@ node path scope) and `flowhttp` (the flow route table). Editor in `web/`.
 
 ## Not done — roughly in priority order
 
+0. **The dashboard, not this repo.** A freshly invited Shepherd Boy Farms user
+   authenticates, gets a role, and then `RequireTenantScope` 403s them on every
+   scoped route — so they sign in and see nothing, Emberwire included. The
+   invite flow never writes a tenant binding: `user_tenant_bindings` has a
+   table, a reader and a writer API with no caller. That blocks the first real
+   deployment and none of the work in this repo matters until it lands. Details
+   are in the session prompt, not here.
 1. **Deploy to ut3.** Publish the image and chart, install in `cluster` mode,
    then prove `macvlan` gets its own MAC/IP on the OT VLAN and a `scan` node
    finds a real PLC. **Deferred deliberately** — Shepherd Boy Farms is the
@@ -140,6 +158,39 @@ produces unrelated churn, so hand-edit instead.
 **Git Bash rewrites `/bench` into a Windows path.** Any CLI flag whose value
 starts with `/` needs `MSYS_NO_PATHCONV=1` in front of the command.
 
+**A fresh clone could not build, for twenty-three commits.** `web/embed.go` has
+`//go:embed all:dist`, `web/dist` is a build artefact, and the root `.gitignore`
+excluded the directory outright — so `go build`, `go vet` and `go test` all
+failed with "pattern all:dist: no matching files found" on any machine that had
+not run the editor build. It only worked locally because `dist` was already
+sitting there. `web/.gitignore` was written correctly for a placeholder
+(`dist/*` plus `!dist/.gitkeep`); the root file said `/web/dist/` and won,
+because **git will not re-include a file inside an excluded directory**. Exclude
+the contents, never the directory. If you add another embed, clone into /tmp and
+build it before believing it works.
+
+**GitHub Pages is not enabled by publishing to `gh-pages`.** The chart workflow
+pushed the branch and succeeded, and the index still 404'd — Pages has to be
+turned on once per repo (`gh api -X POST repos/OWNER/REPO/pages -f
+'source[branch]=gh-pages' -f 'source[path]=/'`). Any new chart repo needs the
+same. A green publish job is not proof the index resolves; `curl` it.
+
+**Publishing happens on version tags only.** Both publish workflows trigger on
+`v*` and refuse anything else, and the chart is packaged with `--version` and
+`--app-version` from the tag, so `Chart.yaml`'s numbers are placeholders. Do not
+bump them expecting anything to happen. Pushing to `main` runs CI and nothing
+else, which means **you can push freely without publishing an artefact.**
+
+**Git Bash rewrites a leading slash into a Windows path.** `-path /bench` became
+`C:/Program Files/Git/bench`. Any flag value starting with `/` needs
+`MSYS_NO_PATHCONV=1` in front of the command. Cost twenty minutes chasing a
+"server not answering" that was the shell.
+
+**Do not invent a marker string to grep for.** I wrote a CI check asserting the
+editor was embedded by grepping for `emberwire-editor`, which does not exist
+anywhere. It would have passed forever without checking anything. Find a real
+string in the real artefact and prove it matches before committing the check.
+
 **PowerShell has no heredoc.** Use the Bash tool with `git commit -F -` for long
 commit messages. A quoted heredoc containing certain punctuation still trips the
 tool occasionally — write the script to the scratchpad and run it from there.
@@ -178,6 +229,17 @@ Stage by path.
   `multiInstanceChart()` in `internal/k8s/store.go`, with a test pinning both.
   Emberwire is multi-instance because Node-RED is, and a site running three
   Node-RED instances on a node has to be able to migrate.
+
+## Working in industrial-dashboard from here
+
+- **Not gofmt-clean.** Running `gofmt` on a file there reformats struct
+  alignment and comment blocks that have nothing to do with your change. Hand
+  edit and check the diff is only your lines.
+- **`git add -A` sweeps up work in progress.** That tree usually has modified
+  provision files sitting uncommitted. Stage by path. I got this wrong once and
+  had to reset a commit that had swallowed four unrelated files.
+- **`main` is protected**: no force-push, one required review. Which means a
+  push cannot be taken back — check what is staged before you send it.
 
 ## Standing principles in this codebase
 
