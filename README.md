@@ -74,10 +74,9 @@ reason I wrote thirty thousand lines of Go instead of a values file.
 **There is no back-pressure.** Node-RED puts a `setImmediate` between every wire
 hop and that queue has no ceiling. A fast source outruns a slow sink, the queue
 grows, and the pod gets OOM-killed with nothing in the log explaining itself.
-[node-red#855](https://github.com/node-red/node-red/issues/855) has been open
-since 2016. Every inbox here is bounded, with a policy per node: block, drop the
-newest, drop the oldest, or raise it to a Catch node and let the flow decide what
-it wants to do about it.
+Every inbox here is bounded, with a policy per node: block, drop the newest, drop
+the oldest, or raise it to a Catch node and let the flow decide what it wants to
+do about it.
 
 **It is single-threaded.** One event loop carries the runtime, the editor API,
 the websocket fan-out, and every node's I/O. One CPU-heavy Function node stalls
@@ -92,9 +91,9 @@ Node-RED's actual trust model is that anyone who can deploy a flow already owns
 the box, and honestly, fair, the `exec` node is right there in the palette. That
 model is fine on a Pi in a workshop. It is not fine on a customer's plant floor,
 and it is not hypothetical either:
-[CVE-2025-41656](https://nvd.nist.gov/vuln/detail/CVE-2025-41656) is
-unauthenticated remote code execution against a default Node-RED, reached by
-deploying a flow with an `exec` node in it.
+[CVE-2025-41656](https://nvd.nist.gov/vuln/detail/CVE-2025-41656) records
+unauthenticated remote command execution, rated critical, because authentication
+for the Node-RED server is not configured by default.
 
 **Credentials are encrypted with AES-256-CTR keyed by a raw SHA-256 of your
 secret.** CTR has no MAC, so anyone who can write `flows_cred.json` on a shared
@@ -185,9 +184,9 @@ stops being a synonym for "anyone who owns the box".
 
 **It refuses to start without authentication.** Not a warning in a log nobody
 reads, not a default you are trusted to change, but a startup error with the
-remedy printed next to it. Node-RED shipping unauthenticated by default is the
-root cause of CVE-2025-41656, and Node-RED's own team proposed this exact fix in
-designs#81 and did not ship it.
+remedy printed next to it. The cause NVD records for CVE-2025-41656 is that
+authentication is not configured by default, and this removes that default
+entirely.
 
 **The `exec` node ships disabled.** An operator names the commands a flow is
 permitted to run, and an enabled node with an empty allowlist is a configuration
