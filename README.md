@@ -23,8 +23,8 @@ This is what came out. **25.1 MB.** Your flows still load.
 runs. Nobody loses a year of work because I had opinions at three in the morning.
 Everything else was fair game, and I took nearly all of it.
 
-Version `2.0.1` is current, and `2.0.0` was the first release under the HotLoop Flow name.
-Image `ghcr.io/hotloop-io/hotloop-flow:2.0.1` for amd64 and arm64, chart at
+Version `2.0.2` is current, and `2.0.0` was the first release under the HotLoop Flow name.
+Image `ghcr.io/hotloop-io/hotloop-flow:2.0.2` for amd64 and arm64, chart at
 `https://hotloop.io/hotloop-flow/`. Roughly 30,000 lines of Go, 51 node types, and a
 race detector that comes back clean on every package.
 
@@ -397,10 +397,10 @@ podman run --rm -p 1880:1880 -v hotloop-flow-data:/data \
   -e HOTLOOP_FLOW_ADMIN_USER=admin \
   -e HOTLOOP_FLOW_ADMIN_PASSWORD_HASH='<bcrypt hash>' \
   -e HOTLOOP_FLOW_CREDENTIAL_SECRET="$(openssl rand -hex 32)" \
-  ghcr.io/hotloop-io/hotloop-flow:2.0.1
+  ghcr.io/hotloop-io/hotloop-flow:2.0.2
 ```
 
-Generate the hash with `podman run --rm ghcr.io/hotloop-io/hotloop-flow:2.0.1
+Generate the hash with `podman run --rm ghcr.io/hotloop-io/hotloop-flow:2.0.2
 hash-password -password 'something-long'`. The image is distroless nonroot with
 no shell in it, so there is nothing to `exec` into and nothing for anybody who
 gets code execution to pivot with.
@@ -649,7 +649,10 @@ connect probing rather than failing, so you can leave them off and still get an
 inventory.
 
 The chart generates the admin password and the credential secret on first install
-and **reads both back off the existing Secret on upgrade**. That is not
+and **reads both back off the existing Secret on upgrade**. (The generated password did
+not work at all until 2.0.2. The hash the app checks was made from a different random
+password than the one the chart stored. It is fixed, and a release installed with the
+bug is fixed in place by upgrading, without changing the password or the credential secret.) That is not
 defensiveness for its own sake. If the credential secret ever regenerates, every
 credential already encrypted onto that PVC becomes undecryptable, every broker
 password in every flow is simply gone, and it presents as a completely clean

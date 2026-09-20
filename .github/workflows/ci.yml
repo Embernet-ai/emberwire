@@ -67,6 +67,49 @@ jobs:
           echo "$OUT" | grep -q "TestWasmMemoryCeilingIsEnforced" || {
             echo "::error::the memory ceiling test did not run"; exit 1; }
 
+  chart:
+    name: Chart
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: azure/setup-helm@v5
+
+      - name: helm lint
+        run: helm lint charts/hotloop-flow
+
+      - name: The generated admin password matches its hash
+        # The chart generates an admin password and prints how to read it, so the
+        # hash the app checks against has to be a hash of that password. It was
+        # not, from 0.1.0 through 2.0.1: the hash helper drew its own random
+        # password on a first install, so the login in the install notes never
+        # worked, and nothing before a live cluster could see it because both
+        # values are random. This renders the chart the way a first install does
+        # and asks bcrypt whether the two agree.
+        run: |
+          command -v htpasswd >/dev/null || sudo apt-get install -y apache2-utils >/dev/null
+          check() {
+            helm template t charts/hotloop-flow "$@" > render.yaml
+            PW=$(awk '/admin-password:/ {gsub(/"/,"",$2); print $2}' render.yaml | base64 -d)
+            HASH=$(awk '/admin-password-hash:/ {gsub(/"/,"",$2); print $2}' render.yaml | base64 -d)
+            test -n "$PW" && test -n "$HASH" || { echo "::error::no password or hash rendered"; exit 1; }
+            printf 'admin:%s
+' "$HASH" > htpasswd.txt
+            htpasswd -vb htpasswd.txt admin "$PW" || { echo "::error::the hash does not match the password ($*)"; exit 1; }
+          }
+          # random each time, so more than once
+          check
+          check
+          check
+          # and a password the operator chose
+          check --set auth.password=a-password-somebody-chose
+
+      - name: An explicit hash is used exactly as given
+        run: |
+          HASH='$2a$10$abcdefghijklmnopqrstuuABCDEFGHIJKLMNOPQRSTUVWXYZ01234'
+          GOT=$(helm template t charts/hotloop-flow --set "auth.passwordHash=$HASH"             | awk '/admin-password-hash:/ {gsub(/"/,"",$2); print $2}' | base64 -d)
+          test "$GOT" = "$HASH" || { echo "::error::explicit hash was altered: $GOT"; exit 1; }
+
   static-build:
     name: Static build
     runs-on: ubuntu-latest
