@@ -40,6 +40,6 @@ annotations:
   catalog.cattle.io/categories: "Forge Industrial,Automation,Flow"
   catalog.cattle.io/requests-cpu: "10m"
   catalog.cattle.io/requests-memory: "64Mi"
-  embernet.ai/vendor: "Fireball Industries"
+  embernet.ai/vendor: "HotLoop"
   embernet.ai/maintainer: "Patrick Ryan"
   embernet.ai/documentation-url: "https://github.com/HotLoop-io/hotloop-flow#readme"

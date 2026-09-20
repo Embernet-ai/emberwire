@@ -23,11 +23,16 @@ This is what came out. **25.1 MB.** Your flows still load.
 runs. Nobody loses a year of work because I had opinions at three in the morning.
 Everything else was fair game, and I took nearly all of it.
 
-Published as `v0.1.0`, back when it was still called Emberwire. That release lives at
-`ghcr.io/embernet-ai/emberwire:0.1.0` and still reads `EMBERWIRE_*`. The first release
-under the new name publishes `ghcr.io/hotloop-io/hotloop-flow` for amd64 and arm64,
-and the chart at `https://hotloop.io/hotloop-flow/`. Roughly 30,000 lines of Go, 51
-node types, and a race detector that comes back clean on every package.
+Version `2.0.0` is the first release under the HotLoop Flow name. Image
+`ghcr.io/hotloop-io/hotloop-flow:2.0.0` for amd64 and arm64, chart at
+`https://hotloop.io/hotloop-flow/`. Roughly 30,000 lines of Go, 51 node types, and a
+race detector that comes back clean on every package.
+
+It was `v0.1.0` back when it was called Emberwire, and that release is still where it
+was, at `ghcr.io/embernet-ai/emberwire:0.1.0`. 2.0.0 does not read anything the old
+names wrote: the `EMBERWIRE_*` variables, the two `emberwire-` database node types, a
+WASM module built against the old exports, and the credentials file from 0.1.0 all
+have to be redone. It was a clean break on purpose, since nobody had built on 0.1.0.
 
 ---
 
@@ -383,18 +388,17 @@ The editor build comes first and is not optional. The bundle is embedded with
 `go:embed`, so a Go build without it fails on a missing pattern rather than
 producing a binary with no editor in it.
 
-Or skip all of that. There is no image at this name until the first release is cut,
-so until then `podman build -t hotloop-flow .` gets you the same thing:
+Or skip all of that:
 
 ```bash
 podman run --rm -p 1880:1880 -v hotloop-flow-data:/data \
   -e HOTLOOP_FLOW_ADMIN_USER=admin \
   -e HOTLOOP_FLOW_ADMIN_PASSWORD_HASH='<bcrypt hash>' \
   -e HOTLOOP_FLOW_CREDENTIAL_SECRET="$(openssl rand -hex 32)" \
-  ghcr.io/hotloop-io/hotloop-flow:<version>
+  ghcr.io/hotloop-io/hotloop-flow:2.0.0
 ```
 
-Generate the hash with `podman run --rm ghcr.io/hotloop-io/hotloop-flow:<version>
+Generate the hash with `podman run --rm ghcr.io/hotloop-io/hotloop-flow:2.0.0
 hash-password -password 'something-long'`. The image is distroless nonroot with
 no shell in it, so there is nothing to `exec` into and nothing for anybody who
 gets code execution to pivot with.
@@ -598,8 +602,6 @@ you are to a limit that does not exist.
 ---
 
 ## Deploying on EmberNET
-
-The chart shows up at this address with the first release under the new name.
 
 ```bash
 helm repo add hotloop-flow https://hotloop.io/hotloop-flow/
