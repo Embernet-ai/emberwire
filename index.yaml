@@ -1,28 +1,27 @@
 apiVersion: v1
 entries:
-  emberwire-app:
+  hotloop-flow:
   - annotations:
       catalog.cattle.io/arch: amd64,arm64
       catalog.cattle.io/categories: Forge Industrial,Automation,Flow
       catalog.cattle.io/certified: partner
-      catalog.cattle.io/display-name: Emberwire
+      catalog.cattle.io/display-name: HotLoop Flow
       catalog.cattle.io/kube-version: '>=1.24.0-0'
       catalog.cattle.io/namespace: default
       catalog.cattle.io/os: linux
-      catalog.cattle.io/release-name: emberwire
+      catalog.cattle.io/release-name: hotloop-flow
       catalog.cattle.io/requests-cpu: 10m
       catalog.cattle.io/requests-memory: 64Mi
-      embernet.ai/documentation-url: https://github.com/embernet-ai/emberwire#readme
+      embernet.ai/documentation-url: https://github.com/HotLoop-io/hotloop-flow#readme
       embernet.ai/maintainer: Patrick Ryan
-      embernet.ai/vendor: Fireball Industries
+      embernet.ai/vendor: HotLoop
     apiVersion: v2
-    appVersion: 0.1.0
-    created: "2026-08-08T22:26:03.784824797Z"
-    description: Emberwire — a flow engine for EmberNET. Node-RED's idea, one static
-      Go binary.
-    digest: a878b13d70f8d4e4a064bba73071915d02a58c84556e7304f593c6ca62ad1118
-    home: https://github.com/embernet-ai/emberwire
-    icon: https://raw.githubusercontent.com/embernet-ai/emberwire/main/docs/icon.png
+    appVersion: 2.0.0
+    created: "2026-09-20T04:40:55.781683136Z"
+    description: HotLoop Flow. A flow engine, Node-RED's idea, one static Go binary.
+    digest: c0a41abb543e5da13516fd36f815ff7129cdcf352d3ea0cb0ad4e5cb5eb4126a
+    home: https://github.com/HotLoop-io/hotloop-flow
+    icon: https://raw.githubusercontent.com/HotLoop-io/hotloop-flow/main/docs/icon.png
     keywords:
     - embernet
     - industrial
@@ -32,11 +31,11 @@ entries:
     maintainers:
     - email: patrick@fireballz.ai
       name: Patrick Ryan
-    name: emberwire-app
+    name: hotloop-flow
     sources:
-    - https://github.com/embernet-ai/emberwire
+    - https://github.com/HotLoop-io/hotloop-flow
     type: application
     urls:
-    - https://embernet-ai.github.io/emberwire/emberwire-app-0.1.0.tgz
-    version: 0.1.0
-generated: "2026-08-08T22:26:03.78370593Z"
+    - https://hotloop.io/hotloop-flow/hotloop-flow-2.0.0.tgz
+    version: 2.0.0
+generated: "2026-09-20T04:40:55.780523248Z"
