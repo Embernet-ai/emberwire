@@ -16,10 +16,10 @@ entries:
       embernet.ai/maintainer: Patrick Ryan
       embernet.ai/vendor: HotLoop
     apiVersion: v2
-    appVersion: 2.0.2
-    created: "2026-09-20T09:01:47.337481402Z"
+    appVersion: 2.0.3
+    created: "2026-09-20T17:42:52.991717345Z"
     description: HotLoop Flow. A flow engine, Node-RED's idea, one static Go binary.
-    digest: 25d5c0b9b7564f5a77255d08d9c614badb4528ebfa6f80a0b219149409616a73
+    digest: 3170339030c95e34eecf07d2e274d125182d87cfd591a7323cd8e52617ae57e4
     home: https://github.com/HotLoop-io/hotloop-flow
     icon: https://raw.githubusercontent.com/HotLoop-io/hotloop-flow/main/docs/icon.png
     keywords:
@@ -36,6 +36,6 @@ entries:
     - https://github.com/HotLoop-io/hotloop-flow
     type: application
     urls:
-    - https://hotloop.io/hotloop-flow/hotloop-flow-2.0.2.tgz
-    version: 2.0.2
-generated: "2026-09-20T09:01:47.336713604Z"
+    - https://hotloop.io/hotloop-flow/hotloop-flow-2.0.3.tgz
+    version: 2.0.3
+generated: "2026-09-20T17:42:52.99046338Z"
