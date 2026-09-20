@@ -127,10 +127,50 @@ func TestCredentialFormatDowngradeIsRejected(t *testing.T) {
 	_ = os.WriteFile(path, out, 0o600)
 
 	c2 := NewCredentialStore(path, testSecret)
-	// An unrecognised format falls through to the plaintext path, which cannot
-	// parse a ciphertext envelope as a credential map.
-	if err := c2.Load(); err == nil {
-		t.Error("Load accepted a file with a rewritten format field")
+	// An unrecognised format is refused by name, not parsed as if it were a
+	// credential map.
+	if err := c2.Load(); !errors.Is(err, ErrUnknownFormat) {
+		t.Errorf("Load of a file with a rewritten format field = %v, want ErrUnknownFormat", err)
+	}
+}
+
+func TestCredentialFileFromEmberwireSaysSo(t *testing.T) {
+	// A file written by 0.1.0 has the same shape as ours and a different format
+	// string. It used to fail with "cannot unmarshal string into map", which
+	// said nothing about what to do. It has to say what it is.
+	path := filepath.Join(t.TempDir(), "credentials.json")
+	old := []byte(`{"format":"emberwire-aes256gcm-argon2id-v1","salt":"AAAA","nonce":"BBBB","ct":"CCCC"}`)
+	if err := os.WriteFile(path, old, 0o600); err != nil {
+		t.Fatal(err)
+	}
+
+	err := NewCredentialStore(path, testSecret).Load()
+	if !errors.Is(err, ErrUnknownFormat) {
+		t.Fatalf("Load = %v, want ErrUnknownFormat", err)
+	}
+	for _, want := range []string{"Emberwire 0.1.0", "cannot read it", "enter the credentials again", path} {
+		if !strings.Contains(err.Error(), want) {
+			t.Errorf("error %q does not mention %q", err, want)
+		}
+	}
+	if strings.Contains(err.Error(), "unmarshal") {
+		t.Errorf("error still reads as a JSON parse failure: %v", err)
+	}
+}
+
+func TestPlaintextCredentialsWithANodeCalledFormatStillLoad(t *testing.T) {
+	// The check for an encrypted envelope must not swallow a plaintext file just
+	// because one of its node ids is the word "format".
+	path := filepath.Join(t.TempDir(), "credentials.json")
+	if err := os.WriteFile(path, []byte(`{"format":{"password":"hunter2"}}`), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	c := NewCredentialStore(path, "")
+	if err := c.Load(); err != nil {
+		t.Fatalf("Load = %v, want nil", err)
+	}
+	if got := c.Get("format")["password"]; got != "hunter2" {
+		t.Errorf("password = %q, want hunter2", got)
 	}
 }
 

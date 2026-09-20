@@ -55,6 +55,15 @@ const (
 // secret was supplied to decrypt it.
 var ErrNoSecret = errors.New("credentials are encrypted but no credential secret was provided")
 
+// ErrUnknownFormat is returned for an encrypted credentials file in a format this
+// version does not recognize. It exists so the operator gets a sentence about
+// their file instead of a JSON parsing error about a ciphertext envelope.
+var ErrUnknownFormat = errors.New("unrecognized credentials file format")
+
+// credFormatEmberwire is what version 0.1.0 wrote, before the rename. Nothing
+// reads it. It is named here only so the error can say what happened.
+const credFormatEmberwire = "emberwire-aes256gcm-argon2id-v1"
+
 // ErrBadSecret is returned when decryption fails authentication, which means
 // either the wrong secret or a tampered file. The two are deliberately not
 // distinguished — telling an attacker which one they got is a free oracle.
@@ -232,7 +241,13 @@ func (c *CredentialStore) Load() error {
 		return nil
 	}
 
-	if format, _ := envelope["format"].(string); format == credFormatGCM {
+	// An encrypted file carries its format as a string. A plaintext file cannot,
+	// because every value in it is an object keyed by node id, so even a node
+	// that happens to be called "format" is not mistaken for one.
+	if format, ok := envelope["format"].(string); ok {
+		if format != credFormatGCM {
+			return unknownFormatError(c.path, format)
+		}
 		var f credFile
 		if err := json.Unmarshal(data, &f); err != nil {
 			return fmt.Errorf("parsing %s: %w", c.path, err)
@@ -247,6 +262,15 @@ func (c *CredentialStore) Load() error {
 	// An unencrypted file. Node-RED writes one when no credentialSecret is set,
 	// and so do we — but it is worth being explicit that this is what happened.
 	return c.ingest(data)
+}
+
+// unknownFormatError says what is wrong with the file and what to do about it.
+func unknownFormatError(path, format string) error {
+	if format == credFormatEmberwire {
+		return fmt.Errorf("%w: %s was written by Emberwire 0.1.0 (%s), and HotLoop Flow 2 cannot read it. "+
+			"Move it aside and enter the credentials again", ErrUnknownFormat, path, format)
+	}
+	return fmt.Errorf("%w: %s is in format %q, which this version does not recognize", ErrUnknownFormat, path, format)
 }
 
 func (c *CredentialStore) ingest(plain []byte) error {

@@ -23,16 +23,18 @@ This is what came out. **25.1 MB.** Your flows still load.
 runs. Nobody loses a year of work because I had opinions at three in the morning.
 Everything else was fair game, and I took nearly all of it.
 
-Version `2.0.0` is the first release under the HotLoop Flow name. Image
-`ghcr.io/hotloop-io/hotloop-flow:2.0.0` for amd64 and arm64, chart at
+Version `2.0.1` is current, and `2.0.0` was the first release under the HotLoop Flow name.
+Image `ghcr.io/hotloop-io/hotloop-flow:2.0.1` for amd64 and arm64, chart at
 `https://hotloop.io/hotloop-flow/`. Roughly 30,000 lines of Go, 51 node types, and a
 race detector that comes back clean on every package.
 
 It was `v0.1.0` back when it was called Emberwire, and that release is still where it
-was, at `ghcr.io/embernet-ai/emberwire:0.1.0`. 2.0.0 does not read anything the old
+was, at `ghcr.io/embernet-ai/emberwire:0.1.0`. 2.x does not read anything the old
 names wrote: the `EMBERWIRE_*` variables, the two `emberwire-` database node types, a
 WASM module built against the old exports, and the credentials file from 0.1.0 all
 have to be redone. It was a clean break on purpose, since nobody had built on 0.1.0.
+The credentials file at least says so now: 2.0.0 died on it with a JSON parsing error,
+and 2.0.1 names the file, says it came from Emberwire, and tells you what to do.
 
 ---
 
@@ -395,10 +397,10 @@ podman run --rm -p 1880:1880 -v hotloop-flow-data:/data \
   -e HOTLOOP_FLOW_ADMIN_USER=admin \
   -e HOTLOOP_FLOW_ADMIN_PASSWORD_HASH='<bcrypt hash>' \
   -e HOTLOOP_FLOW_CREDENTIAL_SECRET="$(openssl rand -hex 32)" \
-  ghcr.io/hotloop-io/hotloop-flow:2.0.0
+  ghcr.io/hotloop-io/hotloop-flow:2.0.1
 ```
 
-Generate the hash with `podman run --rm ghcr.io/hotloop-io/hotloop-flow:2.0.0
+Generate the hash with `podman run --rm ghcr.io/hotloop-io/hotloop-flow:2.0.1
 hash-password -password 'something-long'`. The image is distroless nonroot with
 no shell in it, so there is nothing to `exec` into and nothing for anybody who
 gets code execution to pivot with.
