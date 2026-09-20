@@ -109,6 +109,18 @@ jobs:
           GOT=$(helm template t charts/hotloop-flow --set "auth.passwordHash=$HASH"             | awk '/admin-password-hash:/ {gsub(/"/,"",$2); print $2}' | base64 -d)
           test "$GOT" = "$HASH" || { echo "::error::explicit hash was altered: $GOT"; exit 1; }
 
+      - name: Tenant labels reach every resource, and only when asked for
+        # The EmberNET dashboard passes tenantLabels on an App Store deploy and expects
+        # them on everything the chart renders. This chart ignored the value until
+        # 2.0.3, and nothing said so: the labels just were not there on the cluster.
+        # Seven places carry it: six resources, and the Deployment's pod template.
+        run: |
+          N=$(helm template t charts/hotloop-flow | grep -c 'embernet.ai/tenant' || true)
+          [ "$N" = 0 ] || { echo "::error::a default render carries a tenant label ($N)"; exit 1; }
+          helm template t charts/hotloop-flow --set-string 'tenantLabels.embernet\.ai/tenant=acme' > tenant.yaml
+          N=$(grep -c 'embernet.ai/tenant: "acme"' tenant.yaml || true)
+          [ "$N" = 7 ] || { echo "::error::expected the tenant label in 7 places, found $N"; exit 1; }
+
   static-build:
     name: Static build
     runs-on: ubuntu-latest

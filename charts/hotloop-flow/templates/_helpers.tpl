@@ -30,6 +30,27 @@ helm.sh/chart: {{ include "hotloop-flow.chart" . }}
 app.kubernetes.io/version: {{ .Chart.AppVersion | quote }}
 {{- end }}
 app.kubernetes.io/managed-by: {{ .Release.Service }}
+{{- with (include "hotloop-flow.tenantLabels" .) }}
+{{ . }}
+{{- end }}
+{{- end }}
+
+{{/*
+Labels the EmberNET dashboard asks for on everything a deploy creates.
+
+On an App Store deploy the dashboard passes tenantLabels (the tenant, the app id,
+who deployed it, the deployment id) and expects the chart to fold them onto every
+resource it renders. That is how the Running Apps view tells one tenant's app from
+another's, and how a deployment is traced back to the record of it. This chart did
+not read the value at all until 2.0.3, found by deploying it to a tenant cluster
+and looking at the labels on what arrived: none of the five were there.
+
+Values are quoted, because a label value is always a string.
+*/}}
+{{- define "hotloop-flow.tenantLabels" -}}
+{{- range $k, $v := .Values.tenantLabels }}
+{{ $k }}: {{ $v | toString | quote }}
+{{- end }}
 {{- end }}
 
 {{- define "hotloop-flow.selectorLabels" -}}

@@ -53,6 +53,11 @@ gui:
   displayName: ""     # only used when the dashboard did not inject one
 
 # Injected by the dashboard's DeployApp at deploy time. Do not set by hand.
+# Labels put on every resource the chart renders, and on the pod. The EmberNET
+# dashboard sets these on an App Store deploy (embernet.ai/tenant, app-id, source,
+# deployed-by, deployment-id). Empty by default, so a plain helm install is unchanged.
+tenantLabels: {}
+
 embernet:
   displayName: ""
 

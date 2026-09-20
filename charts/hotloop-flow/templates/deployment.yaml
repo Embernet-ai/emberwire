@@ -33,6 +33,9 @@ spec:
       labels:
         {{- include "hotloop-flow.selectorLabels" . | nindent 8 }}
         {{- include "hotloop-flow.storeLabels" . | nindent 8 }}
+        {{- with (include "hotloop-flow.tenantLabels" .) }}
+        {{- . | nindent 8 }}
+        {{- end }}
         {{- with .Values.podLabels }}
         {{- toYaml . | nindent 8 }}
         {{- end }}
