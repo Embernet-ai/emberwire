@@ -118,7 +118,7 @@ jobs:
         # the built index.html, it is not in any Go source, and it cannot be
         # present unless the real bundle was embedded.
         run: |
-          if ! grep -qa "dark-mode-pending" hotloop-flow; then
+          if ! grep -qa "FOUC guard" hotloop-flow; then
             echo "::error::the editor bundle is not embedded in the binary"
             exit 1
           fi
