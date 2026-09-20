@@ -93,8 +93,7 @@ jobs:
             PW=$(awk '/admin-password:/ {gsub(/"/,"",$2); print $2}' render.yaml | base64 -d)
             HASH=$(awk '/admin-password-hash:/ {gsub(/"/,"",$2); print $2}' render.yaml | base64 -d)
             test -n "$PW" && test -n "$HASH" || { echo "::error::no password or hash rendered"; exit 1; }
-            printf 'admin:%s
-' "$HASH" > htpasswd.txt
+            printf 'admin:%s\n' "$HASH" > htpasswd.txt
             htpasswd -vb htpasswd.txt admin "$PW" || { echo "::error::the hash does not match the password ($*)"; exit 1; }
           }
           # random each time, so more than once
