@@ -21,15 +21,15 @@ func TestExpositionShape(t *testing.T) {
 	// Every family needs HELP and TYPE, or a scraper treats it as untyped and
 	// rate() over a counter silently produces nonsense.
 	for _, want := range []string{
-		"# HELP emberwire_node_messages_received_total",
-		"# TYPE emberwire_node_messages_received_total counter",
-		"# TYPE emberwire_node_queue_length gauge",
-		`emberwire_node_messages_received_total{node="a1",type="mqtt in"} 100`,
-		`emberwire_node_queue_length{node="a1",type="mqtt in"} 3`,
-		`emberwire_node_queue_high_water{node="a1",type="mqtt in"} 12`,
-		`emberwire_build_info{version="1.2.3"} 1`,
-		"emberwire_goroutines",
-		"emberwire_memory_heap_bytes",
+		"# HELP hotloop_flow_node_messages_received_total",
+		"# TYPE hotloop_flow_node_messages_received_total counter",
+		"# TYPE hotloop_flow_node_queue_length gauge",
+		`hotloop_flow_node_messages_received_total{node="a1",type="mqtt in"} 100`,
+		`hotloop_flow_node_queue_length{node="a1",type="mqtt in"} 3`,
+		`hotloop_flow_node_queue_high_water{node="a1",type="mqtt in"} 12`,
+		`hotloop_flow_build_info{version="1.2.3"} 1`,
+		"hotloop_flow_goroutines",
+		"hotloop_flow_memory_heap_bytes",
 	} {
 		if !strings.Contains(out, want) {
 			t.Errorf("exposition is missing %q\n---\n%s", want, out)
@@ -73,9 +73,9 @@ func TestEmptyRuntimeStillExposesFamilies(t *testing.T) {
 	out := render(nil)
 
 	for _, want := range []string{
-		"# TYPE emberwire_node_messages_received_total counter",
-		"# TYPE emberwire_node_queue_length gauge",
-		"emberwire_nodes_running 0",
+		"# TYPE hotloop_flow_node_messages_received_total counter",
+		"# TYPE hotloop_flow_node_queue_length gauge",
+		"hotloop_flow_nodes_running 0",
 	} {
 		if !strings.Contains(out, want) {
 			t.Errorf("empty runtime is missing %q\n---\n%s", want, out)
@@ -98,7 +98,7 @@ func TestOutputIsSortedAndDeterministic(t *testing.T) {
 	nodeLines := func(s string) []string {
 		var out []string
 		for _, l := range strings.Split(s, "\n") {
-			if strings.HasPrefix(l, "emberwire_node_") {
+			if strings.HasPrefix(l, "hotloop_flow_node_") {
 				out = append(out, l)
 			}
 		}
@@ -140,7 +140,7 @@ func TestHandlerServesCorrectContentType(t *testing.T) {
 	if got := rec.Header().Get("Content-Type"); !strings.HasPrefix(got, "text/plain") {
 		t.Errorf("Content-Type = %q, want text/plain", got)
 	}
-	if !strings.Contains(rec.Body.String(), "emberwire_build_info") {
+	if !strings.Contains(rec.Body.String(), "hotloop_flow_build_info") {
 		t.Error("the handler produced no exposition")
 	}
 }

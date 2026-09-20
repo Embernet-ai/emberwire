@@ -1,11 +1,14 @@
-// Emberwire editor.
+// HotLoop Flow editor.
 //
 // Vanilla TypeScript and native DOM. Node-RED's editor is roughly 40,000 lines
 // of jQuery and D3 plus a vendored Monaco, none of which can be themed to look
 // like ours, and all of which would have to be served from the binary.
 
+import './tokens.css';
+import './fonts.css';
 import './theme.css';
 import './canvas.css';
+import { setDarkMode } from './theme';
 import { Api, ApiError, type Descriptor, type Settings } from './api';
 import { mountEditor, type EditorHandles } from './editor';
 
@@ -18,13 +21,12 @@ let editor: EditorHandles | null = null;
 /**
  * Applies a theme and remembers it.
  *
- * Mirrors the dashboard exactly: a class on body, a localStorage key, and a
- * prefers-color-scheme fallback. The pending class the inline head script sets
- * is cleared here once the real class is on.
+ * Mirrors the dashboard: a class on body, a localStorage key, and a
+ * prefers-color-scheme fallback. The inline head script has already set
+ * data-theme, so this only confirms it and does not flash.
  */
 function applyTheme(dark: boolean, remember = true): void {
-  document.body.classList.toggle('dark-mode', dark);
-  document.documentElement.classList.remove('dark-mode-pending');
+  setDarkMode(dark);
   if (remember) {
     try {
       localStorage.setItem('theme', dark ? 'dark' : 'light');
@@ -62,7 +64,7 @@ function watchSystemTheme(): void {
 /**
  * Follows the dashboard's theme when embedded in its iframe.
  *
- * Emberwire opens inside a fullscreen overlay in the Industrial Dashboard.
+ * HotLoop Flow opens inside a fullscreen overlay in the Industrial Dashboard.
  * Without this, toggling the dashboard's theme leaves the embedded app on the
  * other one, which looks broken even though both are individually correct.
  */
@@ -77,7 +79,7 @@ function followParentTheme(): void {
       applyTheme(data.theme === 'dark', false);
     }
   });
-  window.parent.postMessage({ type: 'embernet:ready', app: 'emberwire' }, window.location.origin);
+  window.parent.postMessage({ type: 'embernet:ready', app: 'hotloop-flow' }, window.location.origin);
 }
 
 // ── Login ────────────────────────────────────────────────────────────────────
@@ -103,11 +105,11 @@ function renderLogin(message?: string): void {
   });
 
   const title = document.createElement('h1');
-  title.append('Ember');
+  title.append('Hot');
   const mark = document.createElement('span');
   mark.className = 'mark';
-  mark.textContent = 'wire';
-  title.append(mark);
+  mark.textContent = 'Loop';
+  title.append(mark, ' Flow');
 
   const sub = document.createElement('p');
   sub.textContent = 'Sign in to the runtime.';

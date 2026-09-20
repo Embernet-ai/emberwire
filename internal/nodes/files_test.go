@@ -7,8 +7,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/embernet-ai/emberwire/internal/engine"
-	"github.com/embernet-ai/emberwire/internal/filescope"
+	"github.com/HotLoop-io/hotloop-flow/internal/engine"
+	"github.com/HotLoop-io/hotloop-flow/internal/filescope"
 )
 
 // withFileScope points the file nodes at a temporary directory and restores the

@@ -1,4 +1,4 @@
-// Package store holds Emberwire's persistence: the context stores, the flow
+// Package store holds HotLoop Flow's persistence: the context stores, the flow
 // file, and credentials.
 package store
 
@@ -8,8 +8,8 @@ import (
 	"sort"
 	"sync"
 
-	"github.com/embernet-ai/emberwire/internal/engine"
-	"github.com/embernet-ai/emberwire/internal/node"
+	"github.com/HotLoop-io/hotloop-flow/internal/engine"
+	"github.com/HotLoop-io/hotloop-flow/internal/node"
 )
 
 // MemoryContext is a volatile context store.

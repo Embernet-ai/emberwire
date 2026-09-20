@@ -1,0 +1,219 @@
+/* HotLoop design tokens. CANONICAL.
+ *
+ * The only copy that decides anything is this file, in HotLoop-io/HotLoop-io.
+ * hotloop.io, docs.hotloop.io, and each product's embedded UI are meant to vendor
+ * a copy of it. A CI step that diffs each copy against this one is planned and
+ * does not exist yet, so until it does, keep the copies in sync by hand. Edit
+ * it here first, then update them.
+ *
+ * Two rules shape everything below. Both came from a measurement, not a
+ * preference, and both are load-bearing.
+ *
+ * ONE. The brand orange cannot carry text on the light ground. #FF5A00 on
+ * #FBFAF8 measures 3.00:1 and WCAG AA body text needs 4.5:1. The first version
+ * of hotloop.io used it for every link, which is how a whole site shipped
+ * below AA without anyone noticing. So the brand orange keeps fills, gradients
+ * and the mark, a darker cut carries text and links on light, and the bright
+ * one comes back as the text colour on dark, where it measures 5.98:1.
+ *
+ * The link colour flips with the theme. It is not one value with a tint on
+ * top. #C2410C on the dark ground is 3.61:1 and fails, so a global swap would
+ * have moved the bug rather than fixed it.
+ *
+ * TWO. Carried from the gateway's own stylesheet, unchanged, because it was
+ * right the first time: the accent is for interaction, never for state. An
+ * orange accent means warning cannot also be orange. Anything that says
+ * something about the plant is coloured from the semantic ramp below, and the
+ * alarm priority ramp contains no orange at all. An operator should never have
+ * to work out whether a colour means "this is clickable" or "this is on fire".
+ *
+ * Every ratio in the comments was computed against these exact values. If you
+ * change one, re-run the contrast check rather than trusting the old number.
+ */
+
+:root {
+  color-scheme: light;
+
+  /* ── Brand ──────────────────────────────────────────────────────────── */
+  --hl-orange:        #FF5A00;  /* fills, gradients, the mark. NOT text on light */
+  --hl-orange-hover:  #E85100;
+  --hl-amber:         #FFB700;  /* gradient partner only. 1.67:1. never carries text */
+  --hl-orange-tint:   rgba(255, 90, 0, 0.10);
+  --hl-orange-line:   rgba(255, 90, 0, 0.38);
+  --hl-gradient:      linear-gradient(135deg, var(--hl-amber), var(--hl-orange));
+
+  /* Ink to place ON an orange or amber fill. 5.94:1 on the orange and 10.64:1
+     on the amber, so it holds across the whole gradient. White is 3.13:1 on
+     the orange and is simply wrong, however much it looks fine in a mockup. */
+  --hl-on-accent:     #1A1200;
+
+  /* The text cut. 4.96:1 on --hl-bg, 5.18:1 on --hl-card. */
+  --hl-link:          #C2410C;
+  --hl-link-hover:    #9A3412;  /* 7.00:1 */
+
+  /* ── Ground and ink ─────────────────────────────────────────────────── */
+  --hl-bg:            #FBFAF8;
+  --hl-card:          #FFFFFF;
+  --hl-sunken:        #F3F1EC;  /* code blocks, table zebra */
+  --hl-ink:           #1A1A1A;  /* 16.68:1 */
+  --hl-ink-soft:      #6B6B6B;  /*  5.11:1, passes AA body */
+  --hl-ink-faint:     #8A8880;  /*  3.40:1, large text and non-text only */
+  --hl-border:        #E7E4DD;  /*  1.22:1, decorative hairline ONLY */
+  --hl-line-strong:   #8A8880;  /*  3.40:1, input borders and focus rings, SC 1.4.11 */
+  --hl-focus:         #C2410C;  /*  4.96:1 */
+
+  /* ── Semantic ───────────────────────────────────────────────────────────
+     Two halves, on purpose. The base value is the fill, the dot, the chart
+     series. The -text value is the only one that may carry type on the light
+     ground: --hl-ok is 3.16:1 and fails exactly the way the orange does. Use
+     the wrong half and you reintroduce the bug this file exists to fix. */
+  --hl-ok:            #16A34A;  --hl-ok-text:      #11703A;  /* 5.92:1 */
+  --hl-ok-tint:       rgba(22, 163, 74, 0.10);
+  --hl-warn:          #E0A526;  --hl-warn-text:    #8A5A00;  /* 5.68:1 */
+  --hl-warn-tint:     rgba(224, 165, 38, 0.14);
+  --hl-danger:        #DC2626;  --hl-danger-text:  #A81B1B;  /* 7.09:1 */
+  --hl-danger-tint:   rgba(220, 38, 38, 0.10);
+  --hl-info:          #2563EB;  --hl-info-text:    #1D4ED8;  /* 6.42:1 */
+  --hl-info-tint:     rgba(37, 99, 235, 0.10);
+
+  /* Alarm priority 1 to 4. No orange in this ramp, on purpose. */
+  --hl-prio-1:        #D7263D;
+  --hl-prio-2:        #E0A526;
+  --hl-prio-3:        #2563EB;
+  --hl-prio-4:        #8B93A1;
+
+  /* ── Type ───────────────────────────────────────────────────────────────
+     Self-hosted, never a CDN. Two independent reasons, both real. A product
+     whose whole argument is "do not depend on infrastructure you do not
+     control" cannot open every page with a request to fonts.googleapis.com.
+     And Emberburn runs in air-gapped clusters where that host is unreachable
+     at all, so a CDN font is not slow there, it is absent.
+     Declaring a family you never load is the specific bug to avoid here: the
+     gateway's UI has named Inter since it was written and has been rendering
+     in Segoe UI the entire time, because nothing ever loaded it.
+
+     'Inter Fallback' is a local Arial with its metrics adjusted to match Inter,
+     so when the real font arrives and replaces it, text does not reflow. Without
+     it the swap moved the hero of hotloop.io enough to score 0.17 on Cumulative
+     Layout Shift, and Google's threshold is 0.1. Each site defines it with an
+     @font-face (size-adjust 109.56%, ascent-override 88.42%, descent-override
+     22.02%, line-gap-override 0%, all computed from the font files). A consumer
+     that does not define it loses nothing, since an unknown family is skipped. */
+  --hl-font:      'Inter Variable', 'Inter Fallback', 'Inter', 'Segoe UI', system-ui,
+                  -apple-system, Roboto, sans-serif;
+  --hl-font-mono: 'JetBrains Mono', 'Cascadia Mono', ui-monospace,
+                  SFMono-Regular, Menlo, Consolas, monospace;
+
+  --hl-fs-2xs:  0.75rem;    /* 12 */
+  --hl-fs-xs:   0.8125rem;  /* 13 */
+  --hl-fs-sm:   0.875rem;   /* 14 */
+  --hl-fs-base: 1rem;       /* 16 */
+  --hl-fs-md:   1.125rem;   /* 18 */
+  --hl-fs-lg:   clamp(1.25rem,  0.4vw + 1.15rem, 1.375rem);  /* 20 to 22, lede */
+  --hl-fs-xl:   clamp(1.375rem, 0.8vw + 1.2rem,  1.75rem);   /* 22 to 28, h3 */
+  --hl-fs-2xl:  clamp(1.75rem,  2vw   + 1.25rem, 2.5rem);    /* 28 to 40, h2 */
+  --hl-fs-3xl:  clamp(2.25rem,  4vw   + 1.1rem,  3.5rem);    /* 36 to 56, h1 */
+
+  --hl-lh-tight:   1.15;
+  --hl-lh-heading: 1.25;
+  --hl-lh-body:    1.6;
+  --hl-ls-tight:   -0.03em;
+  --hl-ls-heading: -0.02em;
+  --hl-ls-label:   0.08em;
+
+  /* ── Space, on a 4px rhythm, matching the gateway's own scale ───────── */
+  --hl-s1: 4px;  --hl-s2: 8px;  --hl-s3: 12px; --hl-s4: 16px; --hl-s5: 24px;
+  --hl-s6: 32px; --hl-s7: 48px; --hl-s8: 64px; --hl-s9: 96px;
+
+  /* ── Radius ─────────────────────────────────────────────────────────────
+     The websites use 16px cards. The products keep their own tighter 6/10/14
+     scale, and that divergence is deliberate rather than drift: pill radii in
+     a dense data table make it measurably worse to read. */
+  --hl-r-sm:   8px;
+  --hl-r-card: 16px;
+  --hl-r-pill: 999px;
+
+  /* ── Shadow ─────────────────────────────────────────────────────────────
+     Light builds depth from one soft shadow. Dark builds it from layered
+     surfaces instead, because a shadow on a near-black ground is invisible. */
+  --hl-sh-1: 0 1px 2px rgba(26, 18, 0, 0.05), 0 1px 3px rgba(26, 18, 0, 0.07);
+  --hl-sh-2: 0 8px 24px rgba(26, 18, 0, 0.10), 0 2px 6px rgba(26, 18, 0, 0.06);
+
+  /* ── Measure ────────────────────────────────────────────────────────── */
+  --hl-w-page:  1080px;
+  --hl-w-wide:  1280px;  /* the integrations grid, and nothing else so far */
+  --hl-w-prose: 68ch;
+
+  --hl-transition-fast: 0.15s ease;
+  --hl-transition-med:  0.25s ease;
+}
+
+/* Dark. One authored block, applied by two selectors, so an explicit toggle
+   and the system preference can never drift apart. The guard on the media
+   query is what lets [data-theme="light"] win over a dark OS setting. */
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    color-scheme: dark;
+
+    --hl-bg:          #14120F;
+    --hl-card:        #1C1A16;
+    --hl-sunken:      #100E0C;
+    --hl-ink:         #F5F3EF;  /* 16.87:1 */
+    --hl-ink-soft:    #A6A29A;  /*  7.35:1 */
+    --hl-ink-faint:   #7D786F;
+    --hl-border:      #2C2924;
+    --hl-line-strong: #6B655B;  /*  3.24:1, holds SC 1.4.11 */
+
+    /* The flip. The bright orange is 5.98:1 here and is the correct link
+       colour. #C2410C is 3.61:1 on this ground and is the wrong one. */
+    --hl-link:        #FF5A00;
+    --hl-link-hover:  #FF8124;  /* 7.49:1 */
+    --hl-focus:       #FF5A00;
+    --hl-orange-tint: rgba(255, 90, 0, 0.14);
+
+    --hl-ok:     #3DD68C;  --hl-ok-text:     #79E7B4;  /* 12.38:1 */
+    --hl-warn:   #F5C451;  --hl-warn-text:   #F8D68A;  /* 13.33:1 */
+    --hl-danger: #FF6B6B;  --hl-danger-text: #FF9C9C;  /*  9.34:1 */
+    --hl-info:   #60A5FA;  --hl-info-text:   #93C5FD;  /* 10.37:1 */
+
+    --hl-prio-1: #FF5C6C;
+    --hl-prio-2: #F5C451;
+    --hl-prio-3: #60A5FA;
+    --hl-prio-4: #7A8494;
+
+    --hl-sh-1: 0 1px 2px rgba(0, 0, 0, 0.40);
+    --hl-sh-2: 0 12px 32px rgba(0, 0, 0, 0.55);
+  }
+}
+
+:root[data-theme="dark"] {
+  color-scheme: dark;
+
+  --hl-bg:          #14120F;
+  --hl-card:        #1C1A16;
+  --hl-sunken:      #100E0C;
+  --hl-ink:         #F5F3EF;
+  --hl-ink-soft:    #A6A29A;
+  --hl-ink-faint:   #7D786F;
+  --hl-border:      #2C2924;
+  --hl-line-strong: #6B655B;
+
+  --hl-link:        #FF5A00;
+  --hl-link-hover:  #FF8124;
+  --hl-focus:       #FF5A00;
+  --hl-orange-tint: rgba(255, 90, 0, 0.14);
+
+  --hl-ok:     #3DD68C;  --hl-ok-text:     #79E7B4;
+  --hl-warn:   #F5C451;  --hl-warn-text:   #F8D68A;
+  --hl-danger: #FF6B6B;  --hl-danger-text: #FF9C9C;
+  --hl-info:   #60A5FA;  --hl-info-text:   #93C5FD;
+
+  --hl-prio-1: #FF5C6C;
+  --hl-prio-2: #F5C451;
+  --hl-prio-3: #60A5FA;
+  --hl-prio-4: #7A8494;
+
+  --hl-sh-1: 0 1px 2px rgba(0, 0, 0, 0.40);
+  --hl-sh-2: 0 12px 32px rgba(0, 0, 0, 0.55);
+}

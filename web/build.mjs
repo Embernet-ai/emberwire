@@ -2,8 +2,9 @@
 //
 // esbuild directly rather than a bundler with a config format of its own. The
 // output is embedded into the Go binary, so the only requirements are: one JS
-// file, one CSS file, and no runtime fetches — the CSP on the dashboard's proxy
-// blocks external hosts, and an edge box has no internet anyway.
+// file, one CSS file, the self-hosted font files beside them, and no runtime
+// fetches to anywhere else. The CSP on the dashboard's proxy blocks external
+// hosts, and an edge box has no internet anyway.
 
 import * as esbuild from 'esbuild';
 import { copyFileSync, mkdirSync } from 'node:fs';
@@ -22,8 +23,10 @@ const options = {
   target: 'es2022',
   minify: !watch,
   sourcemap: watch ? 'inline' : false,
-  // Everything inlined. No CDN, no external stylesheet.
-  loader: { '.svg': 'text' },
+  // No CDN, no external stylesheet. The fonts are written next to the CSS rather
+  // than inlined, because a data: URL is one more thing a strict CSP can refuse.
+  loader: { '.svg': 'text', '.woff2': 'file' },
+  assetNames: 'fonts/[name]-[hash]',
   logLevel: 'info',
 };
 

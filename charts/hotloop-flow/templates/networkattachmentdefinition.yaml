@@ -8,7 +8,7 @@ MACVLAN-K3S-Implementation repo never published an index, and the only Multus
 support in the catalogue is in the KubeVirt MicroVM charts, which reference
 pre-existing NetworkAttachmentDefinitions rather than creating them.
 
-This is the mode that makes Emberwire useful on an OT segment. The pod gets its
+This is the mode that makes HotLoop Flow useful on an OT segment. The pod gets its
 own MAC and its own IP on the target VLAN, so it can ARP, it can be discovered,
 and it can talk to a PLC that has no route from the cluster network. Because
 each instance has its own address, several instances on one node do not fight
@@ -20,15 +20,15 @@ which is the right place to find out rather than staring at a Pending pod.
 apiVersion: k8s.cni.cncf.io/v1
 kind: NetworkAttachmentDefinition
 metadata:
-  name: {{ include "emberwire-app.nadName" . }}
+  name: {{ include "hotloop-flow.nadName" . }}
   namespace: {{ .Release.Namespace }}
   labels:
-    {{- include "emberwire-app.labels" . | nindent 4 }}
+    {{- include "hotloop-flow.labels" . | nindent 4 }}
 spec:
   config: |
     {
       "cniVersion": "0.3.1",
-      "name": {{ include "emberwire-app.nadName" . | quote }},
+      "name": {{ include "hotloop-flow.nadName" . | quote }},
       "type": "macvlan",
       "master": {{ $mv.master | quote }},
       "mode": {{ $mv.mode | default "bridge" | quote }},

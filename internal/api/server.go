@@ -16,14 +16,14 @@ import (
 	"sync"
 	"time"
 
-	"github.com/embernet-ai/emberwire/internal/config"
-	"github.com/embernet-ai/emberwire/internal/engine"
-	"github.com/embernet-ai/emberwire/internal/flowhttp"
-	"github.com/embernet-ai/emberwire/internal/metrics"
-	"github.com/embernet-ai/emberwire/internal/node"
-	"github.com/embernet-ai/emberwire/internal/runtime"
-	"github.com/embernet-ai/emberwire/internal/store"
-	"github.com/embernet-ai/emberwire/web"
+	"github.com/HotLoop-io/hotloop-flow/internal/config"
+	"github.com/HotLoop-io/hotloop-flow/internal/engine"
+	"github.com/HotLoop-io/hotloop-flow/internal/flowhttp"
+	"github.com/HotLoop-io/hotloop-flow/internal/metrics"
+	"github.com/HotLoop-io/hotloop-flow/internal/node"
+	"github.com/HotLoop-io/hotloop-flow/internal/runtime"
+	"github.com/HotLoop-io/hotloop-flow/internal/store"
+	"github.com/HotLoop-io/hotloop-flow/web"
 )
 
 // Permissions the API checks. Mirrors Node-RED's granular scheme so a read-only
@@ -280,7 +280,7 @@ func (r *statusRecorder) Unwrap() http.ResponseWriter { return r.ResponseWriter 
 func (s *Server) auth(perm string, h http.HandlerFunc) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if !s.deps.Config.Auth.Enabled {
-			// Only reachable when the operator set EMBERWIRE_INSECURE, which
+			// Only reachable when the operator set HOTLOOP_FLOW_INSECURE, which
 			// config.Validate makes them do deliberately.
 			h(w, r)
 			return
@@ -401,7 +401,7 @@ func (s *Server) handleSettings(w http.ResponseWriter, _ *http.Request) {
 		},
 		"discovery": map[string]any{"enabled": cfg.Discovery.Enabled},
 		"metrics":   map[string]any{"enabled": cfg.Metrics.Enabled, "path": cfg.Metrics.Path},
-		"editor":    map[string]any{"theme": "embernet"},
+		"editor":    map[string]any{"theme": "hotloop"},
 	})
 }
 
@@ -451,7 +451,7 @@ func (s *Server) handlePostFlows(w http.ResponseWriter, r *http.Request) {
 	// The editor sends the revision it last read. An empty one forces the
 	// write, which is the "overwrite anyway" path.
 	expectedRev := flows.Rev
-	if h := r.Header.Get("Emberwire-Deployment-Rev"); h != "" {
+	if h := r.Header.Get("HotLoop-Flow-Deployment-Rev"); h != "" {
 		expectedRev = h
 	}
 
@@ -573,7 +573,7 @@ func (t *tokenStore) issue(u config.User) (string, time.Time) {
 	if _, err := rand.Read(b[:]); err != nil {
 		// crypto/rand does not fail on any platform we ship to. If it somehow
 		// did, issuing a predictable token would be far worse than panicking.
-		panic("emberwire: crypto/rand failed while issuing a token: " + err.Error())
+		panic("hotloop-flow: crypto/rand failed while issuing a token: " + err.Error())
 	}
 	tok := hex.EncodeToString(b[:])
 	expires := time.Now().Add(t.ttl)

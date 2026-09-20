@@ -1,6 +1,6 @@
 apiVersion: v2
-name: emberwire-app
-description: Emberwire — a flow engine for EmberNET. Node-RED's idea, one static Go binary.
+name: hotloop-flow
+description: HotLoop Flow. A flow engine, Node-RED's idea, one static Go binary.
 type: application
 
 # Both are placeholders. helm-publish packages with --version and
@@ -12,11 +12,11 @@ appVersion: "0.1.0"
 
 # Publicly reachable HTTPS, per the App Store contract. A broken icon URL is a
 # broken card in the catalogue.
-icon: https://raw.githubusercontent.com/embernet-ai/emberwire/main/docs/icon.png
+icon: https://raw.githubusercontent.com/HotLoop-io/hotloop-flow/main/docs/icon.png
 
-home: https://github.com/embernet-ai/emberwire
+home: https://github.com/HotLoop-io/hotloop-flow
 sources:
-  - https://github.com/embernet-ai/emberwire
+  - https://github.com/HotLoop-io/hotloop-flow
 
 keywords:
   - embernet
@@ -30,9 +30,9 @@ maintainers:
     email: patrick@fireballz.ai
 
 annotations:
-  catalog.cattle.io/display-name: "Emberwire"
+  catalog.cattle.io/display-name: "HotLoop Flow"
   catalog.cattle.io/namespace: default
-  catalog.cattle.io/release-name: emberwire
+  catalog.cattle.io/release-name: hotloop-flow
   catalog.cattle.io/os: linux
   catalog.cattle.io/arch: "amd64,arm64"
   catalog.cattle.io/certified: partner
@@ -42,4 +42,4 @@ annotations:
   catalog.cattle.io/requests-memory: "64Mi"
   embernet.ai/vendor: "Fireball Industries"
   embernet.ai/maintainer: "Patrick Ryan"
-  embernet.ai/documentation-url: "https://github.com/embernet-ai/emberwire#readme"
+  embernet.ai/documentation-url: "https://github.com/HotLoop-io/hotloop-flow#readme"

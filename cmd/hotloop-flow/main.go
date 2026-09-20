@@ -1,4 +1,4 @@
-// Command emberwire runs the flow engine.
+// Command hotloop-flow runs the flow engine.
 package main
 
 import (
@@ -15,17 +15,17 @@ import (
 	"sync"
 	"syscall"
 
-	"github.com/embernet-ai/emberwire/internal/api"
-	"github.com/embernet-ai/emberwire/internal/config"
-	"github.com/embernet-ai/emberwire/internal/discover"
-	"github.com/embernet-ai/emberwire/internal/engine"
-	"github.com/embernet-ai/emberwire/internal/filescope"
-	"github.com/embernet-ai/emberwire/internal/flowhttp"
-	"github.com/embernet-ai/emberwire/internal/node"
-	"github.com/embernet-ai/emberwire/internal/nodes" // registers the built-in palette
-	"github.com/embernet-ai/emberwire/internal/runtime"
-	"github.com/embernet-ai/emberwire/internal/shell"
-	"github.com/embernet-ai/emberwire/internal/store"
+	"github.com/HotLoop-io/hotloop-flow/internal/api"
+	"github.com/HotLoop-io/hotloop-flow/internal/config"
+	"github.com/HotLoop-io/hotloop-flow/internal/discover"
+	"github.com/HotLoop-io/hotloop-flow/internal/engine"
+	"github.com/HotLoop-io/hotloop-flow/internal/filescope"
+	"github.com/HotLoop-io/hotloop-flow/internal/flowhttp"
+	"github.com/HotLoop-io/hotloop-flow/internal/node"
+	"github.com/HotLoop-io/hotloop-flow/internal/nodes" // registers the built-in palette
+	"github.com/HotLoop-io/hotloop-flow/internal/runtime"
+	"github.com/HotLoop-io/hotloop-flow/internal/shell"
+	"github.com/HotLoop-io/hotloop-flow/internal/store"
 )
 
 // version is stamped at build time with -ldflags "-X main.version=...".
@@ -38,10 +38,10 @@ func main() {
 		// probably looking at a CrashLoopBackOff.
 		var insecure *config.ErrInsecure
 		if errors.As(err, &insecure) {
-			fmt.Fprintf(os.Stderr, "\nemberwire %s\n\n%s\n\n", version, insecure.Error())
+			fmt.Fprintf(os.Stderr, "\nhotloop-flow %s\n\n%s\n\n", version, insecure.Error())
 			os.Exit(2)
 		}
-		fmt.Fprintf(os.Stderr, "emberwire: %v\n", err)
+		fmt.Fprintf(os.Stderr, "hotloop-flow: %v\n", err)
 		os.Exit(1)
 	}
 }
@@ -70,8 +70,8 @@ func run() error {
 // ---------------------------------------------------------------------------
 
 func cmdServe(args []string) error {
-	fs := flag.NewFlagSet("emberwire", flag.ContinueOnError)
-	configPath := fs.String("config", os.Getenv("EMBERWIRE_CONFIG"), "path to the YAML configuration file")
+	fs := flag.NewFlagSet("hotloop-flow", flag.ContinueOnError)
+	configPath := fs.String("config", os.Getenv("HOTLOOP_FLOW_CONFIG"), "path to the YAML configuration file")
 	if err := fs.Parse(args); err != nil {
 		return err
 	}
@@ -427,17 +427,17 @@ func (a *application) deploy(ctx context.Context, flows *engine.Flows, expectedR
 
 func cmdHashPassword(args []string) error {
 	fs := flag.NewFlagSet("hash-password", flag.ContinueOnError)
-	pass := fs.String("password", "", "password to hash (omit to read from EMBERWIRE_PASSWORD)")
+	pass := fs.String("password", "", "password to hash (omit to read from HOTLOOP_FLOW_PASSWORD)")
 	if err := fs.Parse(args); err != nil {
 		return err
 	}
 
 	plain := *pass
 	if plain == "" {
-		plain = os.Getenv("EMBERWIRE_PASSWORD")
+		plain = os.Getenv("HOTLOOP_FLOW_PASSWORD")
 	}
 	if plain == "" {
-		return errors.New("no password given: pass -password, or set EMBERWIRE_PASSWORD")
+		return errors.New("no password given: pass -password, or set HOTLOOP_FLOW_PASSWORD")
 	}
 
 	hash, err := config.HashPassword(plain)
@@ -461,7 +461,7 @@ func cmdImport(args []string) error {
 		return err
 	}
 	if fs.NArg() != 1 {
-		return errors.New("usage: emberwire import <flows.json>")
+		return errors.New("usage: hotloop-flow import <flows.json>")
 	}
 
 	data, err := os.ReadFile(fs.Arg(0))

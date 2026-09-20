@@ -2,13 +2,13 @@
 apiVersion: policy/v1
 kind: PodDisruptionBudget
 metadata:
-  name: {{ include "emberwire-app.fullname" . }}
+  name: {{ include "hotloop-flow.fullname" . }}
   namespace: {{ .Release.Namespace }}
   labels:
-    {{- include "emberwire-app.labels" . | nindent 4 }}
+    {{- include "hotloop-flow.labels" . | nindent 4 }}
 spec:
   minAvailable: {{ .Values.podDisruptionBudget.minAvailable }}
   selector:
     matchLabels:
-      {{- include "emberwire-app.selectorLabels" . | nindent 6 }}
+      {{- include "hotloop-flow.selectorLabels" . | nindent 6 }}
 {{- end }}

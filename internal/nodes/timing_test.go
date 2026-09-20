@@ -5,8 +5,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/embernet-ai/emberwire/internal/engine"
-	"github.com/embernet-ai/emberwire/internal/node"
+	"github.com/HotLoop-io/hotloop-flow/internal/engine"
+	"github.com/HotLoop-io/hotloop-flow/internal/node"
 )
 
 // startNode runs a node's Start method against a cancellable context, returning

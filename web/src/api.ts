@@ -82,7 +82,7 @@ export interface RuntimeEvent {
   at: string;
 }
 
-const TOKEN_KEY = 'emberwire.token';
+const TOKEN_KEY = 'hotloop-flow.token';
 
 export class ApiError extends Error {
   constructor(readonly status: number, message: string) {
@@ -196,7 +196,7 @@ export class Api {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'Emberwire-Deployment-Rev': rev,
+        'HotLoop-Flow-Deployment-Rev': rev,
         ...(this.token ? { Authorization: `Bearer ${this.token}` } : {}),
       },
       body: JSON.stringify(flows),

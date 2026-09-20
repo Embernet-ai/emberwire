@@ -7,7 +7,7 @@
 // Its send queue is also unbounded: a fast source outruns a slow sink until the
 // process dies (node-red#855).
 //
-// Emberwire gives each node instance its own goroutine and its own bounded
+// HotLoop Flow gives each node instance its own goroutine and its own bounded
 // inbox. Within a node, messages are handled strictly in order, so a node keeps
 // state across messages without locking. Across nodes, work runs in parallel.
 // When an inbox fills, the configured overflow policy decides what gives — and
@@ -23,8 +23,8 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/embernet-ai/emberwire/internal/engine"
-	"github.com/embernet-ai/emberwire/internal/node"
+	"github.com/HotLoop-io/hotloop-flow/internal/engine"
+	"github.com/HotLoop-io/hotloop-flow/internal/node"
 )
 
 // OverflowPolicy decides what happens when a node's inbox is full.

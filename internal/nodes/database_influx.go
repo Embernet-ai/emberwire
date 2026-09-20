@@ -11,8 +11,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/embernet-ai/emberwire/internal/engine"
-	"github.com/embernet-ai/emberwire/internal/node"
+	"github.com/HotLoop-io/hotloop-flow/internal/engine"
+	"github.com/HotLoop-io/hotloop-flow/internal/node"
 )
 
 // InfluxDB.
@@ -41,14 +41,14 @@ type InfluxTarget interface {
 
 func registerInfluxConfig() {
 	node.MustRegister(node.Descriptor{
-		Type:     "emberwire-influxdb",
+		Type:     "hotloop-flow-influxdb",
 		Category: node.CategoryConfig,
 		Color:    colorStorage,
 		Icon:     "db",
 		IsConfig: true,
 		Compatibility: node.Compatibility{
 			Level: node.CompatOnly,
-			Notes: "Emberwire's own InfluxDB connection, targeting the App Store's influxdb-app.",
+			Notes: "HotLoop Flow's own InfluxDB connection, targeting the App Store's influxdb-app.",
 		},
 		Props: []node.Prop{
 			{Name: "name", Kind: node.PropString, Label: "Name"},
@@ -195,14 +195,14 @@ func registerInfluxOut() {
 		LabelProp:    "name",
 		Compatibility: node.Compatibility{
 			Level: node.CompatOnly,
-			Notes: "Emberwire's own node. The type name matches the community " +
+			Notes: "HotLoop Flow's own node. The type name matches the community " +
 				"node-red-contrib-influxdb so an imported flow finds it, but the " +
 				"configuration is not identical — check the fields after importing.",
 		},
 		Props: []node.Prop{
 			{Name: "name", Kind: node.PropString, Label: "Name"},
 			{Name: "server", Kind: node.PropConfigRef, Label: "Server",
-				ConfigType: "emberwire-influxdb", Required: true},
+				ConfigType: "hotloop-flow-influxdb", Required: true},
 			{Name: "measurement", Kind: node.PropTypedInput, Label: "Measurement",
 				TypeProp: "measurementType", Default: "readings", Required: true},
 			{Name: "tags", Kind: node.PropList, Label: "Tags", Fields: []node.Prop{

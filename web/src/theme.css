@@ -1,61 +1,55 @@
 /*
- * EmberNET theme.
+ * HotLoop Flow editor theme.
  *
- * The mechanism is copied deliberately from the Industrial Dashboard
- * (view_admin.html): custom properties on :root, redefined on body.dark-mode.
- * Not data-theme, not a class on <html> — the same one, so this feels native
- * inside the dashboard's fullscreen iframe rather than like a different product
- * embedded in it.
+ * The colors, the fonts, and the light and dark values all come from tokens.css,
+ * which is a copy of the canonical file in HotLoop-io/HotLoop-io/brand. The names
+ * below are this editor's own, kept so the component rules read the way they
+ * always did, and every one of them is an alias onto a token. There is no color
+ * in this file that is not a token.
  *
- * The accent is #E31837, which is the dashboard's red. Note the ecosystem has
- * three: #DA291C in the logo SVG, #D92D20 on the marketing site, #E31837 in the
- * product UI. This is a product UI and it gets iframed by the dashboard, so it
- * matches the dashboard.
+ * The dark mechanism is still the Industrial Dashboard's: body.dark-mode, and a
+ * postMessage from the parent frame. theme.ts sets data-theme beside it, which is
+ * what flips the tokens. Both are set together, so they cannot disagree.
+ *
+ * Two rules carried from the tokens. The accent is for interaction and never for
+ * state, so anything that says something about the plant comes from the semantic
+ * ramp. And the bright orange never carries text on the light ground, since it
+ * measures 3.0:1 there: text uses --accent-text, which flips with the theme.
  */
 
 :root {
-  --ember-red: #E31837;
-  --ember-red-hover: #B4122C;
-  --ember-red-wash: rgba(227, 24, 55, 0.06);
+  --accent: var(--hl-orange);
+  --accent-hover: var(--hl-orange-hover);
+  --accent-wash: var(--hl-orange-tint);
+  --accent-text: var(--hl-link);
+  --on-accent: var(--hl-on-accent);
 
-  --portal-bg: #f4f6f8;
-  --card-bg: #ffffff;
-  --surface-2: #fafbfc;
-  --text-main: #333333;
-  --text-sub: #666666;
-  --border-color: #e0e0e0;
-  --shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+  --portal-bg: var(--hl-bg);
+  --card-bg: var(--hl-card);
+  --surface-2: var(--hl-sunken);
+  --text-main: var(--hl-ink);
+  --text-sub: var(--hl-ink-soft);
+  --border-color: var(--hl-border);
+  --border-strong: var(--hl-line-strong);
+  --shadow: var(--hl-sh-1);
 
-  --success: #28a745;
-  --warning: #ff9800;
-  --danger: #dc3545;
-  --info: #3B82F6;
+  /* Fill halves, for dots, strokes and meters. Text uses the -text half. */
+  --success: var(--hl-ok);
+  --warning: var(--hl-warn);
+  --danger: var(--hl-danger);
+  --info: var(--hl-info);
+  --success-text: var(--hl-ok-text);
+  --warning-text: var(--hl-warn-text);
+  --danger-text: var(--hl-danger-text);
+  --info-text: var(--hl-info-text);
 
   --radius-card: 12px;
   --radius-input: 8px;
   --radius-pill: 25px;
-
-  /* Drives native controls — select popups, scrollbars — to match. */
-  color-scheme: light;
 }
 
-body.dark-mode {
-  --portal-bg: #121212;
-  --card-bg: #1E1E1E;
-  --surface-2: #252525;
-  --text-main: #E0E0E0;
-  --text-sub: #aaaaaa;
-  --border-color: #333333;
-  --shadow: 0 4px 8px rgba(0, 0, 0, 0.5);
-  --ember-red-wash: rgba(227, 24, 55, 0.12);
-
-  color-scheme: dark;
-}
-
-/* Applied by the inline head script before first paint so the page never
-   flashes light before switching. */
-html.dark-mode-pending {
-  background: #121212;
+html {
+  background: var(--hl-bg);
 }
 
 * {
@@ -64,7 +58,7 @@ html.dark-mode-pending {
 
 body {
   margin: 0;
-  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  font-family: var(--hl-font);
   background: var(--portal-bg);
   color: var(--text-main);
   font-size: 14px;
@@ -73,7 +67,7 @@ body {
 }
 
 code, pre, .mono {
-  font-family: 'JetBrains Mono', 'Cascadia Code', 'Consolas', monospace;
+  font-family: var(--hl-font-mono);
   font-size: 13px;
 }
 
@@ -101,7 +95,7 @@ code, pre, .mono {
   letter-spacing: -0.01em;
 }
 
-.brand .mark { color: var(--ember-red); }
+.brand .mark { color: var(--accent-text); }
 
 .brand .version {
   font-size: 11px;
@@ -129,28 +123,29 @@ button, .btn {
   text-transform: uppercase;
   padding: 8px 18px;
   border-radius: var(--radius-pill);
-  border: 2px solid var(--ember-red);
-  background: var(--ember-red);
-  color: #fff;
+  border: 2px solid var(--accent);
+  background: var(--accent);
+  color: var(--on-accent);
   cursor: pointer;
   transition: background 0.2s, border-color 0.2s, color 0.2s;
 }
 
-button:hover { background: var(--ember-red-hover); border-color: var(--ember-red-hover); }
+button:hover { background: var(--accent-hover); border-color: var(--accent-hover); }
 
 button.ghost {
   background: transparent;
   color: var(--text-main);
-  border-color: var(--border-color);
+  border-color: var(--border-strong);
 }
 
 button.ghost:hover {
-  border-color: var(--ember-red);
-  color: var(--ember-red);
-  background: var(--ember-red-wash);
+  border-color: var(--accent);
+  color: var(--accent-text);
+  background: var(--accent-wash);
 }
 
 button.icon {
+  color: var(--text-main);
   padding: 6px 10px;
   border-radius: var(--radius-input);
   background: transparent;
@@ -159,22 +154,28 @@ button.icon {
   line-height: 1;
 }
 
-button.icon:hover { background: var(--ember-red-wash); border-color: transparent; }
+button.icon:hover { background: var(--accent-wash); border-color: transparent; }
 
 input, select {
   font-family: inherit;
   font-size: 13px;
   padding: 8px 12px;
   border-radius: var(--radius-input);
-  border: 1px solid var(--border-color);
+  border: 1px solid var(--border-strong);
   background: var(--card-bg);
   color: var(--text-main);
 }
 
 input:focus, select:focus {
   outline: none;
-  border-color: var(--ember-red);
-  box-shadow: 0 0 0 3px var(--ember-red-wash);
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px var(--accent-wash);
+}
+
+/* Keyboard focus is visible on every control, on every ground. */
+:focus-visible {
+  outline: 2px solid var(--hl-focus);
+  outline-offset: 2px;
 }
 
 /* ── Cards ────────────────────────────────────────────────────────────────── */
@@ -205,7 +206,7 @@ input:focus, select:focus {
 
 .stat { font-size: 34px; font-weight: 800; line-height: 1.1; letter-spacing: -0.02em; }
 .stat-label { font-size: 12px; color: var(--text-sub); margin-top: 2px; }
-.stat.accent { color: var(--ember-red); }
+.stat.accent { color: var(--text-main); }
 
 /* ── Tables ───────────────────────────────────────────────────────────────── */
 
@@ -249,10 +250,12 @@ tbody tr:hover { background: var(--surface-2); }
   border: 1px solid transparent;
 }
 
-.badge.full     { color: var(--success); border-color: var(--success); }
-.badge.partial  { color: var(--warning); border-color: var(--warning); }
-.badge.divergent{ color: var(--info);    border-color: var(--info); }
-.badge.only     { color: var(--ember-red); border-color: var(--ember-red); }
+.badge.full     { color: var(--success-text); border-color: var(--success); }
+.badge.partial  { color: var(--warning-text); border-color: var(--warning); }
+.badge.divergent{ color: var(--info-text);    border-color: var(--info); }
+/* Flow-only says a node has no Node-RED counterpart. That is a fact about the
+   node, not a control and not a state, so it stays neutral. */
+.badge.only     { color: var(--text-main);    border-color: var(--border-strong); }
 
 .dot {
   display: inline-block;
@@ -297,7 +300,7 @@ tbody tr:hover { background: var(--surface-2); }
   gap: 10px;
   padding: 3px 0;
   border-bottom: 1px solid var(--border-color);
-  font-family: 'JetBrains Mono', 'Cascadia Code', Consolas, monospace;
+  font-family: var(--hl-font-mono);
   font-size: 12px;
   align-items: baseline;
 }
@@ -305,10 +308,10 @@ tbody tr:hover { background: var(--surface-2); }
 .log-line:last-child { border-bottom: none; }
 .log-time { color: var(--text-sub); flex-shrink: 0; }
 .log-topic { flex-shrink: 0; font-weight: 700; min-width: 62px; }
-.log-topic.debug   { color: var(--info); }
-.log-topic.error   { color: var(--danger); }
-.log-topic.status  { color: var(--success); }
-.log-topic.dropped { color: var(--warning); }
+.log-topic.debug   { color: var(--info-text); }
+.log-topic.error   { color: var(--danger-text); }
+.log-topic.status  { color: var(--success-text); }
+.log-topic.dropped { color: var(--warning-text); }
 .log-topic.log     { color: var(--text-sub); }
 .log-body { flex: 1; word-break: break-word; white-space: pre-wrap; }
 
@@ -353,7 +356,7 @@ tbody tr:hover { background: var(--surface-2); }
 }
 
 .login h1 { margin: 0 0 4px; font-size: 24px; font-weight: 800; }
-.login h1 .mark { color: var(--ember-red); }
+.login h1 .mark { color: var(--accent-text); }
 .login p { margin: 0 0 22px; color: var(--text-sub); font-size: 13px; }
 .login label {
   display: block;
@@ -366,10 +369,12 @@ tbody tr:hover { background: var(--surface-2); }
 }
 .login input { width: 100%; margin-bottom: 16px; }
 .login button { width: 100%; }
-.login .error { color: var(--danger); font-size: 13px; margin-bottom: 14px; }
+.login .error { color: var(--danger-text); font-size: 13px; margin-bottom: 14px; }
 
 @media (max-width: 768px) {
   .container { padding: 16px 12px 48px; }
-  .topbar { padding: 10px 12px; gap: 10px; }
-  .brand { font-size: 16px; }
+  .topbar { padding: 10px 12px; gap: 8px 10px; flex-wrap: wrap; }
+  .brand { font-size: 16px; white-space: nowrap; }
+  .topbar .spacer { display: none; }
+  .topbar .conn { margin-left: auto; }
 }

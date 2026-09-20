@@ -66,15 +66,15 @@ func (h *Handler) Write(w io.Writer) {
 	// deterministic; Prometheus does not care, humans reading it do.
 	sort.Slice(stats, func(i, j int) bool { return stats[i].NodeID < stats[j].NodeID })
 
-	writeGauge(&b, "emberwire_build_info",
+	writeGauge(&b, "hotloop_flow_build_info",
 		"Build information. Always 1; the version is carried in the label.",
 		[]labelled{{labels: [][2]string{{"version", h.version}}, value: 1}})
 
-	writeGauge(&b, "emberwire_uptime_seconds",
+	writeGauge(&b, "hotloop_flow_uptime_seconds",
 		"Seconds since the runtime started.",
 		[]labelled{{value: time.Since(h.startedAt).Seconds()}})
 
-	writeGauge(&b, "emberwire_nodes_running",
+	writeGauge(&b, "hotloop_flow_nodes_running",
 		"Number of node instances currently running.",
 		[]labelled{{value: float64(len(stats))}})
 
@@ -83,20 +83,20 @@ func (h *Handler) Write(w io.Writer) {
 		name, help string
 		get        func(NodeStat) float64
 	}{
-		{"emberwire_node_messages_received_total",
+		{"hotloop_flow_node_messages_received_total",
 			"Messages delivered to a node since it started.",
 			func(s NodeStat) float64 { return float64(s.Received) }},
-		{"emberwire_node_messages_sent_total",
+		{"hotloop_flow_node_messages_sent_total",
 			"Messages a node has emitted since it started.",
 			func(s NodeStat) float64 { return float64(s.Sent) }},
-		{"emberwire_node_errors_total",
+		{"hotloop_flow_node_errors_total",
 			"Errors raised by a node since it started.",
 			func(s NodeStat) float64 { return float64(s.Errors) }},
-		{"emberwire_node_messages_dropped_total",
+		{"hotloop_flow_node_messages_dropped_total",
 			"Messages discarded because a node's inbox was full. Node-RED cannot " +
 				"report this because its queue is unbounded.",
 			func(s NodeStat) float64 { return float64(s.Dropped) }},
-		{"emberwire_node_sends_blocked_total",
+		{"hotloop_flow_node_sends_blocked_total",
 			"Times a sender waited for space in a node's inbox. Sustained " +
 				"back-pressure, which is the signal that a flow cannot keep up.",
 			func(s NodeStat) float64 { return float64(s.Blocked) }},
@@ -114,13 +114,13 @@ func (h *Handler) Write(w io.Writer) {
 		name, help string
 		get        func(NodeStat) float64
 	}{
-		{"emberwire_node_queue_length",
+		{"hotloop_flow_node_queue_length",
 			"Messages currently waiting in a node's inbox.",
 			func(s NodeStat) float64 { return float64(s.QueueLen) }},
-		{"emberwire_node_queue_capacity",
+		{"hotloop_flow_node_queue_capacity",
 			"Maximum messages a node's inbox holds before its overflow policy applies.",
 			func(s NodeStat) float64 { return float64(s.QueueCap) }},
-		{"emberwire_node_queue_high_water",
+		{"hotloop_flow_node_queue_high_water",
 			"Deepest a node's inbox has been since it started. The early warning " +
 				"that a flow is close to overflowing, before it does.",
 			func(s NodeStat) float64 { return float64(s.QueueHigh) }},
@@ -139,16 +139,16 @@ func (h *Handler) Write(w io.Writer) {
 	var mem runtime.MemStats
 	runtime.ReadMemStats(&mem)
 
-	writeGauge(&b, "emberwire_goroutines",
+	writeGauge(&b, "hotloop_flow_goroutines",
 		"Goroutines in flight. Roughly one per node plus the I/O each one holds.",
 		[]labelled{{value: float64(runtime.NumGoroutine())}})
-	writeGauge(&b, "emberwire_memory_heap_bytes",
+	writeGauge(&b, "hotloop_flow_memory_heap_bytes",
 		"Heap bytes currently allocated.",
 		[]labelled{{value: float64(mem.HeapAlloc)}})
-	writeGauge(&b, "emberwire_memory_sys_bytes",
+	writeGauge(&b, "hotloop_flow_memory_sys_bytes",
 		"Bytes obtained from the operating system.",
 		[]labelled{{value: float64(mem.Sys)}})
-	writeCounter(&b, "emberwire_gc_cycles_total",
+	writeCounter(&b, "hotloop_flow_gc_cycles_total",
 		"Completed garbage collection cycles.",
 		[]labelled{{value: float64(mem.NumGC)}})
 

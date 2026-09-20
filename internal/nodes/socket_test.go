@@ -6,7 +6,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/embernet-ai/emberwire/internal/engine"
+	"github.com/HotLoop-io/hotloop-flow/internal/engine"
 )
 
 // freePort asks the kernel for a port nobody is using, so the tests do not

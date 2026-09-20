@@ -1,10 +1,10 @@
-# Emberwire
+# HotLoop Flow
 
-**Node-RED's idea. My runtime.** A flow engine in Go for EmberNET: one static
+**Node-RED's idea. My runtime.** A flow engine in Go: one static
 binary, an editor that belongs to us, and a scheduler that does not fall over
 when a sensor starts talking faster than the thing reading it.
 
-[![CI](https://github.com/Embernet-ai/emberwire/actions/workflows/ci.yml/badge.svg)](https://github.com/Embernet-ai/emberwire/actions/workflows/ci.yml)
+[![CI](https://github.com/HotLoop-io/hotloop-flow/actions/workflows/ci.yml/badge.svg)](https://github.com/HotLoop-io/hotloop-flow/actions/workflows/ci.yml)
 [![Licence](https://img.shields.io/badge/licence-Apache--2.0-blue)](LICENSE)
 [![Go](https://img.shields.io/badge/go-1.26-00ADD8)](go.mod)
 
@@ -23,9 +23,11 @@ This is what came out. **25.1 MB.** Your flows still load.
 runs. Nobody loses a year of work because I had opinions at three in the morning.
 Everything else was fair game, and I took nearly all of it.
 
-Published as `v0.1.0`. Image `ghcr.io/embernet-ai/emberwire:0.1.0` for amd64 and
-arm64, chart at `https://embernet-ai.github.io/emberwire/`. Roughly 30,000 lines
-of Go, 51 node types, and a race detector that comes back clean on every package.
+Published as `v0.1.0`, back when it was still called Emberwire. That release lives at
+`ghcr.io/embernet-ai/emberwire:0.1.0` and still reads `EMBERWIRE_*`. The first release
+under the new name publishes `ghcr.io/hotloop-io/hotloop-flow` for amd64 and arm64,
+and the chart at `https://hotloop.io/hotloop-flow/`. Roughly 30,000 lines of Go, 51
+node types, and a race detector that comes back clean on every package.
 
 ---
 
@@ -35,7 +37,7 @@ Both runtimes in rootless podman on one box, the same five-node flow file
 deployed to each **unchanged**, driven by the same load generator in the same
 sitting. Linux, 12 CPUs, `nodered/node-red:latest`, 8 connections, 30 seconds.
 
-| | Emberwire | Node-RED | |
+| | HotLoop Flow | Node-RED | |
 |---|---|---|---|
 | Image size | **25.1 MB** | 717 MB | 29× |
 | Memory, idle | **4.8 MB** | 54.6 MB | 11× |
@@ -58,7 +60,7 @@ p99 gap is far narrower than the p50 gap for a reason that is not flattering to
 anybody: under saturation both runtimes queue, queueing dominates the tail, and
 the median is the only column where per-request cost actually shows up.
 
-Produced by `emberwire bench`, which is in this repository, so you can go
+Produced by `hotloop-flow bench`, which is in this repository, so you can go
 disagree with me on your own hardware. Method, flow file, exact commands, and
 caveats live in [docs/bench/](docs/bench/). **Not one figure here came off a
 forum post**, and nothing comparative goes into a document until that command
@@ -107,7 +109,7 @@ Both are still real.
 
 ## What is different, concretely
 
-| | Node-RED | Emberwire |
+| | Node-RED | HotLoop Flow |
 |---|---|---|
 | Runtime | Node.js, one event loop | Go, goroutine per node |
 | Back-pressure | none, unbounded queue | bounded inbox, four policies |
@@ -131,7 +133,7 @@ table. Node-RED's characteristic failure mode is a pod that quietly inflates
 until the kubelet kills it, leaving a log that explains nothing to the person
 holding the pager.
 
-| | Node-RED | Emberwire |
+| | Node-RED | HotLoop Flow |
 |---|---|---|
 | Node inbox | unbounded | bounded, four overflow policies |
 | Delay and rate-limit queue | unbounded | bounded, refused to a Catch node past the limit |
@@ -275,9 +277,9 @@ has to get right.
 
 | Export | Signature | Required |
 |---|---|---|
-| `emberwire_process` | `(ptr i32, len i32) -> i64` | yes |
-| `emberwire_alloc` | `(size i32) -> i32` | yes |
-| `emberwire_free` | `(ptr i32, size i32)` | no |
+| `hotloop_flow_process` | `(ptr i32, len i32) -> i64` | yes |
+| `hotloop_flow_alloc` | `(size i32) -> i32` | yes |
+| `hotloop_flow_free` | `(ptr i32, size i32)` | no |
 
 The `i64` result packs an offset in the high 32 bits and a length in the low 32,
 pointing at a JSON response in the guest's own memory. Everything travels as JSON
@@ -349,7 +351,7 @@ read that way is re-encrypted under GCM on the next save.
 Before you deploy anything, ask it what is going to happen:
 
 ```bash
-emberwire import flows.json
+hotloop-flow import flows.json
 ```
 
 It reports every node type in the file, including the ones inside subflows, split
@@ -367,31 +369,32 @@ From source:
 
 ```bash
 cd web && npm install && npm run build && cd ..
-go build -o emberwire ./cmd/emberwire
+go build -o hotloop-flow ./cmd/hotloop-flow
 
-export EMBERWIRE_DATA_DIR=./data
-export EMBERWIRE_ADMIN_USER=admin
-export EMBERWIRE_ADMIN_PASSWORD_HASH="$(./emberwire hash-password -password 'something-long')"
-export EMBERWIRE_CREDENTIAL_SECRET="$(openssl rand -hex 32)"
+export HOTLOOP_FLOW_DATA_DIR=./data
+export HOTLOOP_FLOW_ADMIN_USER=admin
+export HOTLOOP_FLOW_ADMIN_PASSWORD_HASH="$(./hotloop-flow hash-password -password 'something-long')"
+export HOTLOOP_FLOW_CREDENTIAL_SECRET="$(openssl rand -hex 32)"
 
-./emberwire
+./hotloop-flow
 ```
 
 The editor build comes first and is not optional. The bundle is embedded with
 `go:embed`, so a Go build without it fails on a missing pattern rather than
 producing a binary with no editor in it.
 
-Or skip all of that:
+Or skip all of that. There is no image at this name until the first release is cut,
+so until then `podman build -t hotloop-flow .` gets you the same thing:
 
 ```bash
-docker run --rm -p 1880:1880 -v emberwire-data:/data \
-  -e EMBERWIRE_ADMIN_USER=admin \
-  -e EMBERWIRE_ADMIN_PASSWORD_HASH='<bcrypt hash>' \
-  -e EMBERWIRE_CREDENTIAL_SECRET="$(openssl rand -hex 32)" \
-  ghcr.io/embernet-ai/emberwire:0.1.0
+podman run --rm -p 1880:1880 -v hotloop-flow-data:/data \
+  -e HOTLOOP_FLOW_ADMIN_USER=admin \
+  -e HOTLOOP_FLOW_ADMIN_PASSWORD_HASH='<bcrypt hash>' \
+  -e HOTLOOP_FLOW_CREDENTIAL_SECRET="$(openssl rand -hex 32)" \
+  ghcr.io/hotloop-io/hotloop-flow:<version>
 ```
 
-Generate the hash with `docker run --rm ghcr.io/embernet-ai/emberwire:0.1.0
+Generate the hash with `podman run --rm ghcr.io/hotloop-io/hotloop-flow:<version>
 hash-password -password 'something-long'`. The image is distroless nonroot with
 no shell in it, so there is nothing to `exec` into and nothing for anybody who
 gets code execution to pivot with.
@@ -403,12 +406,12 @@ and restart, or just build the flow in the editor.
 
 | Command | What it does |
 |---|---|
-| `emberwire` | Serves the runtime, the admin API, and the editor. The default. |
-| `emberwire -config <path>` | Same, from a YAML file. Also reads `EMBERWIRE_CONFIG`. |
-| `emberwire hash-password` | bcrypt hash for a password. Takes `-password` or `EMBERWIRE_PASSWORD`. Refuses anything under 8 characters. |
-| `emberwire import <flows.json>` | Reports what would happen before you deploy it. |
-| `emberwire bench` | The benchmark harness that produced the table above. |
-| `emberwire version` | The version. |
+| `hotloop-flow` | Serves the runtime, the admin API, and the editor. The default. |
+| `hotloop-flow -config <path>` | Same, from a YAML file. Also reads `HOTLOOP_FLOW_CONFIG`. |
+| `hotloop-flow hash-password` | bcrypt hash for a password. Takes `-password` or `HOTLOOP_FLOW_PASSWORD`. Refuses anything under 8 characters. |
+| `hotloop-flow import <flows.json>` | Reports what would happen before you deploy it. |
+| `hotloop-flow bench` | The benchmark harness that produced the table above. |
+| `hotloop-flow version` | The version. |
 
 ---
 
@@ -498,22 +501,22 @@ Secret.
 
 | Variable | Sets |
 |---|---|
-| `EMBERWIRE_CONFIG` | Path to the YAML file. |
-| `EMBERWIRE_HOST`, `EMBERWIRE_PORT` | Listener. |
-| `EMBERWIRE_ADMIN_ROOT`, `EMBERWIRE_HTTP_ROOT` | Path prefixes. |
-| `EMBERWIRE_DATA_DIR`, `EMBERWIRE_FLOW_FILE` | Where state lives. |
-| `EMBERWIRE_CREDENTIAL_SECRET` | Credential encryption secret. |
-| `EMBERWIRE_ADMIN_USER`, `EMBERWIRE_ADMIN_PASSWORD_HASH` | A single admin account with full permissions, which is what makes a first-run container usable without mounting a file. Both must be set. |
-| `EMBERWIRE_INBOX_CAPACITY`, `EMBERWIRE_OVERFLOW` | Scheduler defaults. |
-| `EMBERWIRE_LOG_LEVEL`, `EMBERWIRE_LOG_FORMAT` | Logging. |
-| `EMBERWIRE_DISCOVERY_ENABLED`, `EMBERWIRE_DISCOVERY_CIDRS` | Discovery nodes. Comma-separated CIDRs. |
-| `EMBERWIRE_EXEC_ENABLED`, `EMBERWIRE_EXEC_ALLOWED_COMMANDS` | The exec node. Comma-separated commands. |
-| `EMBERWIRE_FILE_ALLOWED_PATHS` | Extra file node roots. Comma-separated. |
-| `EMBERWIRE_INSECURE` | Disables authentication. Do not. |
-| `EMBERWIRE_ALLOW_PLAINTEXT_CREDENTIALS` | Permits unencrypted credentials at rest. |
+| `HOTLOOP_FLOW_CONFIG` | Path to the YAML file. |
+| `HOTLOOP_FLOW_HOST`, `HOTLOOP_FLOW_PORT` | Listener. |
+| `HOTLOOP_FLOW_ADMIN_ROOT`, `HOTLOOP_FLOW_HTTP_ROOT` | Path prefixes. |
+| `HOTLOOP_FLOW_DATA_DIR`, `HOTLOOP_FLOW_FLOW_FILE` | Where state lives. |
+| `HOTLOOP_FLOW_CREDENTIAL_SECRET` | Credential encryption secret. |
+| `HOTLOOP_FLOW_ADMIN_USER`, `HOTLOOP_FLOW_ADMIN_PASSWORD_HASH` | A single admin account with full permissions, which is what makes a first-run container usable without mounting a file. Both must be set. |
+| `HOTLOOP_FLOW_INBOX_CAPACITY`, `HOTLOOP_FLOW_OVERFLOW` | Scheduler defaults. |
+| `HOTLOOP_FLOW_LOG_LEVEL`, `HOTLOOP_FLOW_LOG_FORMAT` | Logging. |
+| `HOTLOOP_FLOW_DISCOVERY_ENABLED`, `HOTLOOP_FLOW_DISCOVERY_CIDRS` | Discovery nodes. Comma-separated CIDRs. |
+| `HOTLOOP_FLOW_EXEC_ENABLED`, `HOTLOOP_FLOW_EXEC_ALLOWED_COMMANDS` | The exec node. Comma-separated commands. |
+| `HOTLOOP_FLOW_FILE_ALLOWED_PATHS` | Extra file node roots. Comma-separated. |
+| `HOTLOOP_FLOW_INSECURE` | Disables authentication. Do not. |
+| `HOTLOOP_FLOW_ALLOW_PLAINTEXT_CREDENTIALS` | Permits unencrypted credentials at rest. |
 
 The two dangerous ones accept only `1`, `true`, `yes`, and `on`. Setting
-`EMBERWIRE_INSECURE=0` or `=false` does not disable authentication, and neither
+`HOTLOOP_FLOW_INSECURE=0` or `=false` does not disable authentication, and neither
 does anything else you can think of, which is the entire point of writing that
 parser by hand rather than reaching for `strconv.ParseBool`.
 
@@ -554,7 +557,7 @@ Permissions are `"*"` for everything, an exact string such as `flows.read`, or a
 prefix grant such as `flows.*`. A read-only account for a dashboard that just
 wants to render flow status is `["flows.read", "status.read"]` and nothing more.
 
-Deploys take an optional `Emberwire-Deployment-Rev` header. Send the revision you
+Deploys take an optional `HotLoop-Flow-Deployment-Rev` header. Send the revision you
 last read and a deploy racing another editor is rejected instead of silently
 overwriting somebody's work, which is the failure mode you only find out about
 from whoever lost their afternoon.
@@ -569,24 +572,24 @@ you should not need a second container to find out that your inbox is full.
 
 | Metric | Type | What it tells you |
 |---|---|---|
-| `emberwire_build_info` | gauge | Always 1. The version rides in the label. |
-| `emberwire_uptime_seconds` | gauge | Seconds since the runtime started. |
-| `emberwire_nodes_running` | gauge | Node instances currently running. |
-| `emberwire_node_messages_received_total` | counter | Messages delivered to a node. |
-| `emberwire_node_messages_sent_total` | counter | Messages a node has emitted. |
-| `emberwire_node_errors_total` | counter | Errors a node raised. |
-| `emberwire_node_messages_dropped_total` | counter | Messages discarded because an inbox was full. Node-RED cannot report this, because it has no bound to overflow. |
-| `emberwire_node_sends_blocked_total` | counter | Times a sender waited for space. Sustained back-pressure, which is the real signal that a flow cannot keep up. |
-| `emberwire_node_queue_length` | gauge | Messages waiting right now. |
-| `emberwire_node_queue_capacity` | gauge | Where the overflow policy starts applying. |
-| `emberwire_node_queue_high_water` | gauge | The deepest that inbox has ever been. |
-| `emberwire_goroutines` | gauge | Roughly one per node plus the I/O each holds. |
-| `emberwire_memory_heap_bytes` | gauge | Heap currently allocated. |
-| `emberwire_memory_sys_bytes` | gauge | Bytes taken from the OS. |
-| `emberwire_gc_cycles_total` | counter | Completed GC cycles. |
+| `hotloop_flow_build_info` | gauge | Always 1. The version rides in the label. |
+| `hotloop_flow_uptime_seconds` | gauge | Seconds since the runtime started. |
+| `hotloop_flow_nodes_running` | gauge | Node instances currently running. |
+| `hotloop_flow_node_messages_received_total` | counter | Messages delivered to a node. |
+| `hotloop_flow_node_messages_sent_total` | counter | Messages a node has emitted. |
+| `hotloop_flow_node_errors_total` | counter | Errors a node raised. |
+| `hotloop_flow_node_messages_dropped_total` | counter | Messages discarded because an inbox was full. Node-RED cannot report this, because it has no bound to overflow. |
+| `hotloop_flow_node_sends_blocked_total` | counter | Times a sender waited for space. Sustained back-pressure, which is the real signal that a flow cannot keep up. |
+| `hotloop_flow_node_queue_length` | gauge | Messages waiting right now. |
+| `hotloop_flow_node_queue_capacity` | gauge | Where the overflow policy starts applying. |
+| `hotloop_flow_node_queue_high_water` | gauge | The deepest that inbox has ever been. |
+| `hotloop_flow_goroutines` | gauge | Roughly one per node plus the I/O each holds. |
+| `hotloop_flow_memory_heap_bytes` | gauge | Heap currently allocated. |
+| `hotloop_flow_memory_sys_bytes` | gauge | Bytes taken from the OS. |
+| `hotloop_flow_gc_cycles_total` | counter | Completed GC cycles. |
 
-The one to alert on is `emberwire_node_queue_high_water` against
-`emberwire_node_queue_capacity`. High water is the early warning that a flow is
+The one to alert on is `hotloop_flow_node_queue_high_water` against
+`hotloop_flow_node_queue_capacity`. High water is the early warning that a flow is
 approaching its ceiling, which arrives before anything is dropped and long before
 anyone is awake. That alert is the whole reason I built the bounded inbox, and it
 is the metric Node-RED structurally cannot give you: you cannot report how close
@@ -596,9 +599,11 @@ you are to a limit that does not exist.
 
 ## Deploying on EmberNET
 
+The chart shows up at this address with the first release under the new name.
+
 ```bash
-helm repo add emberwire https://embernet-ai.github.io/emberwire/
-helm install line3-flows emberwire/emberwire-app
+helm repo add hotloop-flow https://hotloop.io/hotloop-flow/
+helm install line3-flows hotloop-flow/hotloop-flow
 ```
 
 Or install it from the App Store in the dashboard, which is the entire point of
@@ -607,7 +612,7 @@ you need.
 
 One clarification, since it bites people. Multi-instance means multiple
 *releases*, not multiple replicas, and the chart pins `replicaCount: 1` on
-purpose. Emberwire holds flow state and open connections to brokers and PLCs, so
+purpose. HotLoop Flow holds flow state and open connections to brokers and PLCs, so
 two pods behind one Service would both subscribe and both write, and your
 InfluxDB would quietly receive everything twice. Scaling out means a second
 instance with its own flows.
@@ -657,10 +662,10 @@ CrashLoopBackOff and does not need my Go paths.
 
 | Refusal | Fix |
 |---|---|
-| Authentication is disabled | Configure a user. Or set `EMBERWIRE_INSECURE=true` if the network is genuinely isolated and you have decided to own that. |
-| Authentication is on with no users | Set `auth.users`, or `EMBERWIRE_ADMIN_USER` and `EMBERWIRE_ADMIN_PASSWORD_HASH`. |
-| A `passwordHash` that is not bcrypt | Run `emberwire hash-password`. This check exists so a plaintext password can never end up in a ConfigMap by accident. |
-| No credential secret | Set `EMBERWIRE_CREDENTIAL_SECRET`. Or `EMBERWIRE_ALLOW_PLAINTEXT_CREDENTIALS=true` if this instance holds no secrets at all. |
+| Authentication is disabled | Configure a user. Or set `HOTLOOP_FLOW_INSECURE=true` if the network is genuinely isolated and you have decided to own that. |
+| Authentication is on with no users | Set `auth.users`, or `HOTLOOP_FLOW_ADMIN_USER` and `HOTLOOP_FLOW_ADMIN_PASSWORD_HASH`. |
+| A `passwordHash` that is not bcrypt | Run `hotloop-flow hash-password`. This check exists so a plaintext password can never end up in a ConfigMap by accident. |
+| No credential secret | Set `HOTLOOP_FLOW_CREDENTIAL_SECRET`. Or `HOTLOOP_FLOW_ALLOW_PLAINTEXT_CREDENTIALS=true` if this instance holds no secrets at all. |
 | `discovery` or `exec` enabled with an empty allowlist | List what is permitted, or turn the thing off. An empty allowlist read permissively is exactly how a narrow capability becomes a shell. |
 
 What it will *not* refuse to start over is one bad node. A flow with a single
@@ -721,8 +726,8 @@ silence and cost somebody a day.
 ## Layout
 
 ```
-emberwire/
-  cmd/emberwire/     the binary, the import checker, and the benchmark harness
+hotloop-flow/
+  cmd/hotloop-flow/     the binary, the import checker, and the benchmark harness
   internal/
     engine/          messages, property expressions, the v1 graph, subflow expansion
     node/            what a node type is: Descriptor, registry, contracts
@@ -748,7 +753,7 @@ emberwire/
 ```bash
 cd web && npm install && npm run build && cd ..
 go test ./...
-CGO_ENABLED=0 go build -trimpath -ldflags="-s -w" -o emberwire ./cmd/emberwire
+CGO_ENABLED=0 go build -trimpath -ldflags="-s -w" -o hotloop-flow ./cmd/hotloop-flow
 ```
 
 Static, no cgo, runs on distroless. goja and wazero are both pure Go, which is
@@ -766,7 +771,7 @@ CGO_ENABLED=1 go test -race -count=1 -timeout 900s ./...
 it rather than editing it:
 
 ```bash
-EMBERWIRE_UPDATE_DOCS=1 go test ./internal/nodes/
+HOTLOOP_FLOW_UPDATE_DOCS=1 go test ./internal/nodes/
 ```
 
 Integration tests are skipped unless the environment points at a real broker and
@@ -808,6 +813,6 @@ not what. Keep that up.
 
 ## Licence
 
-Apache 2.0. Emberwire is an independent implementation and contains no Node-RED
+Apache 2.0. HotLoop Flow is an independent implementation and contains no Node-RED
 source. See [NOTICE](NOTICE) for the attribution and the full list of deliberate
 divergences.

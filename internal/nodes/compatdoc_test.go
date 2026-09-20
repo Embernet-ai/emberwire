@@ -8,7 +8,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/embernet-ai/emberwire/internal/node"
+	"github.com/HotLoop-io/hotloop-flow/internal/node"
 )
 
 // The compatibility matrix is generated from the registry rather than written by
@@ -21,13 +21,13 @@ import (
 //
 // Regenerate with:
 //
-//	EMBERWIRE_UPDATE_DOCS=1 go test ./internal/nodes/ -run TestCompatibilityMatrix
+//	HOTLOOP_FLOW_UPDATE_DOCS=1 go test ./internal/nodes/ -run TestCompatibilityMatrix
 const compatDocPath = "../../docs/compatibility.md"
 
 func TestCompatibilityMatrixIsCurrent(t *testing.T) {
 	want := renderCompatibilityDoc()
 
-	if os.Getenv("EMBERWIRE_UPDATE_DOCS") == "1" {
+	if os.Getenv("HOTLOOP_FLOW_UPDATE_DOCS") == "1" {
 		if err := os.MkdirAll(filepath.Dir(compatDocPath), 0o755); err != nil {
 			t.Fatalf("creating docs directory: %v", err)
 		}
@@ -40,12 +40,12 @@ func TestCompatibilityMatrixIsCurrent(t *testing.T) {
 
 	got, err := os.ReadFile(compatDocPath)
 	if err != nil {
-		t.Fatalf("reading %s: %v\nRegenerate with EMBERWIRE_UPDATE_DOCS=1 go test ./internal/nodes/",
+		t.Fatalf("reading %s: %v\nRegenerate with HOTLOOP_FLOW_UPDATE_DOCS=1 go test ./internal/nodes/",
 			compatDocPath, err)
 	}
 	if normaliseNewlines(string(got)) != normaliseNewlines(want) {
 		t.Errorf("%s is out of date with the node registry.\n"+
-			"Regenerate with: EMBERWIRE_UPDATE_DOCS=1 go test ./internal/nodes/", compatDocPath)
+			"Regenerate with: HOTLOOP_FLOW_UPDATE_DOCS=1 go test ./internal/nodes/", compatDocPath)
 	}
 }
 
@@ -59,7 +59,7 @@ func renderCompatibilityDoc() string {
 	b.WriteString("# Node compatibility\n\n")
 	b.WriteString("Generated from the node registry. Do not edit by hand — change the\n")
 	b.WriteString("`Compatibility` field on the node's descriptor and regenerate:\n\n")
-	b.WriteString("```\nEMBERWIRE_UPDATE_DOCS=1 go test ./internal/nodes/\n```\n\n")
+	b.WriteString("```\nHOTLOOP_FLOW_UPDATE_DOCS=1 go test ./internal/nodes/\n```\n\n")
 
 	b.WriteString("A node that is partially compatible and silent about how is worse than one\n")
 	b.WriteString("that is obviously absent: the flow appears to work and quietly does the wrong\n")
@@ -71,7 +71,7 @@ func renderCompatibilityDoc() string {
 	b.WriteString("| **full** | Behaves as the Node-RED node of the same type does. |\n")
 	b.WriteString("| **partial** | A subset. The notes say exactly which parts are missing. |\n")
 	b.WriteString("| **divergent** | Deliberately behaves differently. The notes say why. |\n")
-	b.WriteString("| **emberwire-only** | No Node-RED counterpart. |\n\n")
+	b.WriteString("| **hotloop-flow-only** | No Node-RED counterpart. |\n\n")
 
 	b.WriteString("## Not supported at all\n\n")
 	b.WriteString("**Node-RED community nodes.** They are npm packages that need Node.js.\n")

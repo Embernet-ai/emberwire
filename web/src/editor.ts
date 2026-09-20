@@ -5,6 +5,7 @@ import { ApiError } from './api';
 import { Canvas } from './canvas';
 import { editNode } from './dialog';
 import { Graph, type FlowEntry } from './graph';
+import { setDarkMode } from './theme';
 
 export interface EditorHandles {
   destroy(): void;
@@ -34,7 +35,7 @@ export function mountEditor(
   const signOut = el('button', { class: 'ghost' }, 'Sign out');
 
   const topbar = el('div', { class: 'topbar' },
-    el('div', { class: 'brand' }, 'Ember', el('span', { class: 'mark' }, 'wire'),
+    el('div', { class: 'brand' }, el('span', {}, 'Hot', el('span', { class: 'mark' }, 'Loop'), ' Flow'),
       el('span', { class: 'version' }, version)),
     el('div', { class: 'spacer' }),
     el('div', { class: 'conn mono' }, connDot, connText),
@@ -94,7 +95,7 @@ export function mountEditor(
             el('span', {}, d.paletteLabel ?? d.type),
           );
           item.addEventListener('dragstart', (e) => {
-            (e as DragEvent).dataTransfer?.setData('text/emberwire-node', d.type);
+            (e as DragEvent).dataTransfer?.setData('text/hotloop-flow-node', d.type);
           });
           // Double-click drops it at the centre of the view, for anyone who
           // would rather not drag.
@@ -188,7 +189,7 @@ export function mountEditor(
         el('td', { class: 'num' }, String(n.received)),
         el('td', { class: 'num' }, String(n.sent)),
         el('td', { class: 'num' }, n.errors > 0
-          ? el('strong', { style: 'color:var(--danger)' }, String(n.errors))
+          ? el('strong', { style: 'color:var(--danger-text)' }, String(n.errors))
           : '0'),
         (() => { const td = el('td', { class: 'num' }, `${n.queueLen}`); td.append(meter); return td; })(),
       );
@@ -295,7 +296,7 @@ export function mountEditor(
   fitBtn.onclick = () => canvas.fit();
   themeBtn.onclick = () => {
     const dark = !document.body.classList.contains('dark-mode');
-    document.body.classList.toggle('dark-mode', dark);
+    setDarkMode(dark);
     try { localStorage.setItem('theme', dark ? 'dark' : 'light'); } catch { /* private mode */ }
     const icon = document.getElementById('theme-icon');
     if (icon) icon.textContent = dark ? '☀️' : '🌙';

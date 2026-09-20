@@ -6,8 +6,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/embernet-ai/emberwire/internal/engine"
-	"github.com/embernet-ai/emberwire/internal/node"
+	"github.com/HotLoop-io/hotloop-flow/internal/engine"
+	"github.com/HotLoop-io/hotloop-flow/internal/node"
 )
 
 // Integration tests against real infrastructure.
@@ -21,11 +21,11 @@ import (
 //
 // Run at ut3 with, for example:
 //
-//	EMBERWIRE_TEST_MQTT=monster-mq.tenant-fireball.svc.cluster.local:1883 \
-//	EMBERWIRE_TEST_INFLUX_URL=http://influxdb-app.tenant-fireball.svc.cluster.local:8086 \
-//	EMBERWIRE_TEST_INFLUX_ORG=fireball \
-//	EMBERWIRE_TEST_INFLUX_BUCKET=emberwire-test \
-//	EMBERWIRE_TEST_INFLUX_TOKEN=... \
+//	HOTLOOP_FLOW_TEST_MQTT=monster-mq.tenant-fireball.svc.cluster.local:1883 \
+//	HOTLOOP_FLOW_TEST_INFLUX_URL=http://influxdb-app.tenant-fireball.svc.cluster.local:8086 \
+//	HOTLOOP_FLOW_TEST_INFLUX_ORG=fireball \
+//	HOTLOOP_FLOW_TEST_INFLUX_BUCKET=hotloop-flow-test \
+//	HOTLOOP_FLOW_TEST_INFLUX_TOKEN=... \
 //	go test ./internal/nodes/ -run Integration -v
 
 func requireEnv(t *testing.T, key string) string {
@@ -50,7 +50,7 @@ func (s *credServices) ConfigNode(id string) (node.Node, bool) {
 }
 
 func TestIntegrationMQTTRoundTrip(t *testing.T) {
-	addr := requireEnv(t, "EMBERWIRE_TEST_MQTT")
+	addr := requireEnv(t, "HOTLOOP_FLOW_TEST_MQTT")
 
 	host, port := splitHostPort(t, addr)
 	svc := &credServices{testServices: newTestServices(), configs: map[string]node.Node{}}
@@ -67,7 +67,7 @@ func TestIntegrationMQTTRoundTrip(t *testing.T) {
 		}
 	}()
 
-	topic := "emberwire/test/" + engine.GenerateID()
+	topic := "hotloop-flow/test/" + engine.GenerateID()
 
 	in := build(t, "mqtt in", `{"broker":"brk","topic":"`+topic+`","qos":"1","datatype":"auto"}`, svc)
 	inEmitter := newTestEmitter()
@@ -112,22 +112,22 @@ func TestIntegrationMQTTRoundTrip(t *testing.T) {
 }
 
 func TestIntegrationInfluxWrite(t *testing.T) {
-	url := requireEnv(t, "EMBERWIRE_TEST_INFLUX_URL")
-	org := requireEnv(t, "EMBERWIRE_TEST_INFLUX_ORG")
-	bucket := requireEnv(t, "EMBERWIRE_TEST_INFLUX_BUCKET")
-	token := requireEnv(t, "EMBERWIRE_TEST_INFLUX_TOKEN")
+	url := requireEnv(t, "HOTLOOP_FLOW_TEST_INFLUX_URL")
+	org := requireEnv(t, "HOTLOOP_FLOW_TEST_INFLUX_ORG")
+	bucket := requireEnv(t, "HOTLOOP_FLOW_TEST_INFLUX_BUCKET")
+	token := requireEnv(t, "HOTLOOP_FLOW_TEST_INFLUX_TOKEN")
 
 	svc := &credServices{testServices: newTestServices(), configs: map[string]node.Node{}}
 	svc.creds["token"] = token
 
-	cfg := build(t, "emberwire-influxdb", `{
+	cfg := build(t, "hotloop-flow-influxdb", `{
         "url":"`+url+`","apiVersion":"2","org":"`+org+`","bucket":"`+bucket+`","precision":"ns"
     }`, svc)
 	svc.configs["srv"] = cfg
 
 	n := build(t, "influxdb out", `{
         "server":"srv",
-        "measurement":"emberwire_test","measurementType":"str",
+        "measurement":"hotloop_flow_test","measurementType":"str",
         "tags":[{"column":"line","value":"topic","valueType":"msg"}],
         "fields":[{"column":"value","value":"payload","valueType":"msg"}]
     }`, svc)
@@ -140,15 +140,15 @@ func TestIntegrationInfluxWrite(t *testing.T) {
 }
 
 func TestIntegrationPostgresInsert(t *testing.T) {
-	host := requireEnv(t, "EMBERWIRE_TEST_PG_HOST")
-	database := requireEnv(t, "EMBERWIRE_TEST_PG_DATABASE")
-	user := requireEnv(t, "EMBERWIRE_TEST_PG_USER")
-	password := requireEnv(t, "EMBERWIRE_TEST_PG_PASSWORD")
+	host := requireEnv(t, "HOTLOOP_FLOW_TEST_PG_HOST")
+	database := requireEnv(t, "HOTLOOP_FLOW_TEST_PG_DATABASE")
+	user := requireEnv(t, "HOTLOOP_FLOW_TEST_PG_USER")
+	password := requireEnv(t, "HOTLOOP_FLOW_TEST_PG_PASSWORD")
 
 	// Honour the port rather than assuming 5432. A dev box frequently has
 	// something else already on the default port, and connecting to the wrong
 	// database is a far more confusing failure than not connecting at all.
-	port := os.Getenv("EMBERWIRE_TEST_PG_PORT")
+	port := os.Getenv("HOTLOOP_FLOW_TEST_PG_PORT")
 	if port == "" {
 		port = "5432"
 	}
@@ -156,7 +156,7 @@ func TestIntegrationPostgresInsert(t *testing.T) {
 	svc := &credServices{testServices: newTestServices(), configs: map[string]node.Node{}}
 	svc.creds["password"] = password
 
-	cfg := build(t, "emberwire-postgres", `{
+	cfg := build(t, "hotloop-flow-postgres", `{
         "host":"`+host+`","port":`+port+`,"database":"`+database+`",
         "user":"`+user+`","sslmode":"prefer","maxConns":2
     }`, svc)
@@ -173,14 +173,14 @@ func TestIntegrationPostgresInsert(t *testing.T) {
 	// exercises that path.
 	ddl := build(t, "postgres", `{
         "server":"srv","mode":"query",
-        "sql":"CREATE TABLE IF NOT EXISTS emberwire_test (machine text, value double precision, recorded_at timestamptz default now())"
+        "sql":"CREATE TABLE IF NOT EXISTS hotloop_flow_test (machine text, value double precision, recorded_at timestamptz default now())"
     }`, svc)
 	if _, err := send(t, ddl, msg(t, `{}`)); err != nil {
 		t.Fatalf("creating the test table: %v", err)
 	}
 
 	ins := build(t, "postgres", `{
-        "server":"srv","mode":"insert","table":"emberwire_test",
+        "server":"srv","mode":"insert","table":"hotloop_flow_test",
         "columns":[
             {"column":"machine","value":"topic","valueType":"msg"},
             {"column":"value","value":"payload","valueType":"msg"}
@@ -196,7 +196,7 @@ func TestIntegrationPostgresInsert(t *testing.T) {
 
 	q := build(t, "postgres", `{
         "server":"srv","mode":"query",
-        "sql":"SELECT machine, value FROM emberwire_test WHERE machine = $1 ORDER BY recorded_at DESC LIMIT 1",
+        "sql":"SELECT machine, value FROM hotloop_flow_test WHERE machine = $1 ORDER BY recorded_at DESC LIMIT 1",
         "params":[{"value":"topic","valueType":"msg"}]
     }`, svc)
 	qe, err := send(t, q, msg(t, `{"topic":"press01"}`))
@@ -213,7 +213,7 @@ func TestIntegrationPostgresInsert(t *testing.T) {
 	}
 
 	cleanup := build(t, "postgres", `{
-        "server":"srv","mode":"query","sql":"DROP TABLE emberwire_test"
+        "server":"srv","mode":"query","sql":"DROP TABLE hotloop_flow_test"
     }`, svc)
 	if _, err := send(t, cleanup, msg(t, `{}`)); err != nil {
 		t.Logf("could not drop the test table: %v", err)

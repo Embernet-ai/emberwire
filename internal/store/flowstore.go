@@ -9,7 +9,7 @@ import (
 	"path/filepath"
 	"sync"
 
-	"github.com/embernet-ai/emberwire/internal/engine"
+	"github.com/HotLoop-io/hotloop-flow/internal/engine"
 )
 
 // DefaultBackupGenerations is how many previous flow files are retained.
@@ -183,7 +183,7 @@ func mustEmpty() *engine.Flows {
 	if err != nil {
 		// "[]" is a compile-time constant and always parses. If it ever does
 		// not, the parser is broken in a way no runtime handling can help.
-		panic("emberwire: empty flow document failed to parse: " + err.Error())
+		panic("hotloop-flow: empty flow document failed to parse: " + err.Error())
 	}
 	return f
 }

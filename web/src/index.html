@@ -3,16 +3,16 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Emberwire</title>
+<title>HotLoop Flow</title>
 <script>
 // FOUC guard. Runs before the stylesheet is applied, so a dark-mode user never
-// sees a white flash. Same approach as the dashboard's view_admin.html.
+// sees a white flash. It sets data-theme, which is what the tokens flip on.
 (function () {
   try {
     var stored = localStorage.getItem('theme');
     var dark = stored ? stored === 'dark'
                       : window.matchMedia('(prefers-color-scheme: dark)').matches;
-    if (dark) document.documentElement.classList.add('dark-mode-pending');
+    document.documentElement.dataset.theme = dark ? 'dark' : 'light';
   } catch (e) { /* private mode; fall through to light */ }
 })();
 </script>

@@ -9,8 +9,8 @@ import (
 	"sync"
 	"time"
 
+	"github.com/HotLoop-io/hotloop-flow/internal/runtime"
 	"github.com/coder/websocket"
-	"github.com/embernet-ai/emberwire/internal/runtime"
 )
 
 // The editor's event channel.

@@ -1,16 +1,16 @@
 apiVersion: v1
 kind: Service
 metadata:
-  name: {{ include "emberwire-app.fullname" . }}
+  name: {{ include "hotloop-flow.fullname" . }}
   namespace: {{ .Release.Namespace }}
   labels:
-    {{- include "emberwire-app.labels" . | nindent 4 }}
+    {{- include "hotloop-flow.labels" . | nindent 4 }}
     {{- /* THE BIG FOUR on the Service too. The dashboard's /api/apps/services
            endpoint queries Services by embernet.ai/store-app=true to fill the
            Running Apps panel; labels on the pod alone make the app show in node
            detail and stay invisible in the catalogue. */}}
-    {{- include "emberwire-app.storeLabels" . | nindent 4 }}
-  {{- $ann := include "emberwire-app.storeAnnotations" . }}
+    {{- include "hotloop-flow.storeLabels" . | nindent 4 }}
+  {{- $ann := include "hotloop-flow.storeAnnotations" . }}
   {{- if trim $ann }}
   annotations:
     {{- $ann | nindent 4 }}
@@ -41,4 +41,4 @@ spec:
       protocol: {{ .protocol | default "TCP" }}
     {{- end }}
   selector:
-    {{- include "emberwire-app.selectorLabels" . | nindent 4 }}
+    {{- include "hotloop-flow.selectorLabels" . | nindent 4 }}

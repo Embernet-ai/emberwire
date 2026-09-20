@@ -5,7 +5,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/embernet-ai/emberwire/internal/engine"
+	"github.com/HotLoop-io/hotloop-flow/internal/engine"
 )
 
 func TestSplitArray(t *testing.T) {

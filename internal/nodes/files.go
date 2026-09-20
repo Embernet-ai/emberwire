@@ -15,9 +15,9 @@ import (
 	"sync"
 	"time"
 
-	"github.com/embernet-ai/emberwire/internal/engine"
-	"github.com/embernet-ai/emberwire/internal/filescope"
-	"github.com/embernet-ai/emberwire/internal/node"
+	"github.com/HotLoop-io/hotloop-flow/internal/engine"
+	"github.com/HotLoop-io/hotloop-flow/internal/filescope"
+	"github.com/HotLoop-io/hotloop-flow/internal/node"
 )
 
 func init() {
@@ -183,7 +183,7 @@ func registerFileOut() {
 				Options: encodingOptions()},
 			{Name: "ew_sync", Kind: node.PropBool, Label: "Flush to disk after every write",
 				Default: true,
-				Help: "Emberwire's own. Off is faster and loses the tail of the file " +
+				Help: "HotLoop Flow's own. Off is faster and loses the tail of the file " +
 					"on a power cut, which for a data log is the part that mattered."},
 		},
 		Help: "Writes the payload to a file, appending by default. The filename may " +
@@ -336,7 +336,7 @@ func registerFileIn() {
 			{Name: "sendError", Kind: node.PropBool, Label: "Send a message when the file is missing",
 				Help: "Off means a missing file raises an error to a Catch node instead."},
 			{Name: "ew_maxBytes", Kind: node.PropNumber, Label: "Read limit (bytes)",
-				Help: "Emberwire's own; Node-RED reads without a limit."},
+				Help: "HotLoop Flow's own; Node-RED reads without a limit."},
 			{Name: "ew_chunkSize", Kind: node.PropNumber, Label: "Chunk size (bytes)"},
 		},
 		Help: "Reads a file and sends its contents, whole, a line at a time, or in " +

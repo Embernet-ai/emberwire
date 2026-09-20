@@ -8,14 +8,14 @@ import (
 	"strings"
 	"time"
 
-	"github.com/embernet-ai/emberwire/internal/discover"
-	"github.com/embernet-ai/emberwire/internal/engine"
-	"github.com/embernet-ai/emberwire/internal/node"
+	"github.com/HotLoop-io/hotloop-flow/internal/discover"
+	"github.com/HotLoop-io/hotloop-flow/internal/engine"
+	"github.com/HotLoop-io/hotloop-flow/internal/node"
 )
 
 // The discovery family.
 //
-// These are why Emberwire has a macvlan network mode. A flow engine that can
+// These are why HotLoop Flow has a macvlan network mode. A flow engine that can
 // only see what k3s routes to it cannot inventory an OT segment; with its own
 // MAC and IP on the plant VLAN, it can.
 //
@@ -52,7 +52,7 @@ func registerNetInfo() {
 		LabelProp:    "name",
 		Compatibility: node.Compatibility{
 			Level: node.CompatOnly,
-			Notes: "Emberwire's own node. Reports the interfaces the runtime can see, " +
+			Notes: "HotLoop Flow's own node. Reports the interfaces the runtime can see, " +
 				"which in macvlan mode is how a flow learns its address on the OT VLAN.",
 		},
 		Props: []node.Prop{
@@ -107,7 +107,7 @@ func registerScan() {
 		LabelProp:    "name",
 		Compatibility: node.Compatibility{
 			Level: node.CompatOnly,
-			Notes: "Emberwire's own node. Sweeps a CIDR range for OT devices and " +
+			Notes: "HotLoop Flow's own node. Sweeps a CIDR range for OT devices and " +
 				"identifies Modbus and EtherNet/IP endpoints. Bounded by the " +
 				"discovery allowlist in the runtime configuration, not by this dialog.",
 		},

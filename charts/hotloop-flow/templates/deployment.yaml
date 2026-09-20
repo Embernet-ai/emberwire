@@ -1,22 +1,22 @@
-{{- include "emberwire-app.validateNetwork" . -}}
+{{- include "hotloop-flow.validateNetwork" . -}}
 {{- $mode := .Values.network.mode | default "cluster" -}}
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: {{ include "emberwire-app.fullname" . }}
+  name: {{ include "hotloop-flow.fullname" . }}
   namespace: {{ .Release.Namespace }}
   labels:
-    {{- include "emberwire-app.labels" . | nindent 4 }}
+    {{- include "hotloop-flow.labels" . | nindent 4 }}
 spec:
   replicas: {{ .Values.replicaCount }}
-  # Recreate, not RollingUpdate. Two Emberwire pods sharing a
+  # Recreate, not RollingUpdate. Two HotLoop Flow pods sharing a
   # ReadWriteOnce PVC cannot both mount it, and if they could they would both
   # subscribe to the same MQTT topics and both write to the same historian.
   strategy:
     type: Recreate
   selector:
     matchLabels:
-      {{- include "emberwire-app.selectorLabels" . | nindent 6 }}
+      {{- include "hotloop-flow.selectorLabels" . | nindent 6 }}
   template:
     metadata:
       annotations:
@@ -25,14 +25,14 @@ spec:
         checksum/config: {{ include (print $.Template.BasePath "/configmap.yaml") . | sha256sum }}
         checksum/secret: {{ include (print $.Template.BasePath "/secret.yaml") . | sha256sum }}
         {{- if eq $mode "macvlan" }}
-        k8s.v1.cni.cncf.io/networks: {{ include "emberwire-app.macvlanNetwork" . | quote }}
+        k8s.v1.cni.cncf.io/networks: {{ include "hotloop-flow.macvlanNetwork" . | quote }}
         {{- end }}
         {{- with .Values.podAnnotations }}
         {{- toYaml . | nindent 8 }}
         {{- end }}
       labels:
-        {{- include "emberwire-app.selectorLabels" . | nindent 8 }}
-        {{- include "emberwire-app.storeLabels" . | nindent 8 }}
+        {{- include "hotloop-flow.selectorLabels" . | nindent 8 }}
+        {{- include "hotloop-flow.storeLabels" . | nindent 8 }}
         {{- with .Values.podLabels }}
         {{- toYaml . | nindent 8 }}
         {{- end }}
@@ -41,7 +41,7 @@ spec:
       imagePullSecrets:
         {{- toYaml . | nindent 8 }}
       {{- end }}
-      serviceAccountName: {{ include "emberwire-app.serviceAccountName" . }}
+      serviceAccountName: {{ include "hotloop-flow.serviceAccountName" . }}
 
       {{- if eq $mode "host" }}
       hostNetwork: true
@@ -61,13 +61,13 @@ spec:
         {{- end }}
 
       containers:
-        - name: emberwire
+        - name: hotloop-flow
           image: "{{ .Values.image.repository }}:{{ .Values.image.tag | default .Chart.AppVersion }}"
           imagePullPolicy: {{ .Values.image.pullPolicy }}
 
           args:
             - -config
-            - /etc/emberwire/config.yaml
+            - /etc/hotloop-flow/config.yaml
 
           securityContext:
             allowPrivilegeEscalation: {{ .Values.securityContext.allowPrivilegeEscalation }}
@@ -100,17 +100,17 @@ spec:
             {{- end }}
 
           env:
-            - name: EMBERWIRE_ADMIN_USER
+            - name: HOTLOOP_FLOW_ADMIN_USER
               value: {{ .Values.auth.username | quote }}
-            - name: EMBERWIRE_ADMIN_PASSWORD_HASH
+            - name: HOTLOOP_FLOW_ADMIN_PASSWORD_HASH
               valueFrom:
                 secretKeyRef:
-                  name: {{ include "emberwire-app.secretName" . }}
+                  name: {{ include "hotloop-flow.secretName" . }}
                   key: admin-password-hash
-            - name: EMBERWIRE_CREDENTIAL_SECRET
+            - name: HOTLOOP_FLOW_CREDENTIAL_SECRET
               valueFrom:
                 secretKeyRef:
-                  name: {{ include "emberwire-app.secretName" . }}
+                  name: {{ include "hotloop-flow.secretName" . }}
                   key: credential-secret
             {{- with .Values.env }}
             {{- toYaml . | nindent 12 }}
@@ -142,11 +142,11 @@ spec:
           {{- end }}
 
           resources:
-            {{- include "emberwire-app.resources" . | nindent 12 }}
+            {{- include "hotloop-flow.resources" . | nindent 12 }}
 
           volumeMounts:
             - name: config
-              mountPath: /etc/emberwire
+              mountPath: /etc/hotloop-flow
               readOnly: true
             - name: data
               mountPath: {{ .Values.persistence.mountPath }}
@@ -159,13 +159,13 @@ spec:
       volumes:
         - name: config
           configMap:
-            name: {{ include "emberwire-app.configMapName" . }}
+            name: {{ include "hotloop-flow.configMapName" . }}
         - name: tmp
           emptyDir: {}
         - name: data
         {{- if .Values.persistence.enabled }}
           persistentVolumeClaim:
-            claimName: {{ include "emberwire-app.pvcName" . }}
+            claimName: {{ include "hotloop-flow.pvcName" . }}
         {{- else }}
           # No PVC: flows and credentials are lost on restart. Acceptable for a
           # throwaway instance, never for one holding a line's logic.

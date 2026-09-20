@@ -37,20 +37,20 @@ import (
 // language can produce it without a shared schema compiler.
 const (
 	// ExportProcess is the entry point:
-	//   emberwire_process(ptr i32, len i32) -> i64
+	//   hotloop_flow_process(ptr i32, len i32) -> i64
 	// The result packs an offset in the high 32 bits and a length in the low 32,
 	// pointing at a JSON response in the guest's own memory.
-	ExportProcess = "emberwire_process"
+	ExportProcess = "hotloop_flow_process"
 
 	// ExportAlloc lets the host place the input inside the guest's allocator
 	// rather than writing over memory the guest believes it owns:
-	//   emberwire_alloc(size i32) -> i32
-	ExportAlloc = "emberwire_alloc"
+	//   hotloop_flow_alloc(size i32) -> i32
+	ExportAlloc = "hotloop_flow_alloc"
 
 	// ExportFree returns a buffer. Optional: a guest with an arena or a bump
 	// allocator has nothing to do here.
-	//   emberwire_free(ptr i32, size i32)
-	ExportFree = "emberwire_free"
+	//   hotloop_flow_free(ptr i32, size i32)
+	ExportFree = "hotloop_flow_free"
 )
 
 // Limits bound one guest instance.

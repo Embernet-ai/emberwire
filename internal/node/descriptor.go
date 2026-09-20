@@ -6,7 +6,7 @@
 // help pane and a call to RED.nodes.registerType. The two must be kept in step
 // by hand, and adding a property means editing markup in a second language.
 //
-// Emberwire has one definition. A node declares a Descriptor in Go, the admin
+// HotLoop Flow has one definition. A node declares a Descriptor in Go, the admin
 // API serves it as JSON, and the editor renders the edit dialog generically from
 // the property list. There is no per-node HTML anywhere in this repository.
 package node
@@ -17,7 +17,7 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/embernet-ai/emberwire/internal/engine"
+	"github.com/HotLoop-io/hotloop-flow/internal/engine"
 )
 
 // Category groups node types in the editor palette. The set mirrors Node-RED's
@@ -205,10 +205,10 @@ type Descriptor struct {
 	Compatibility Compatibility `json:"compatibility"`
 }
 
-// Compatibility describes the relationship between an Emberwire node and the
+// Compatibility describes the relationship between a HotLoop Flow node and the
 // Node-RED node of the same type.
 type Compatibility struct {
-	// Level is one of "full", "partial", "divergent" or "emberwire-only".
+	// Level is one of "full", "partial", "divergent" or "hotloop-flow-only".
 	Level string `json:"level"`
 	// Notes explains any divergence in one or two sentences.
 	Notes string `json:"notes,omitempty"`
@@ -223,7 +223,7 @@ const (
 	CompatFull      = "full"
 	CompatPartial   = "partial"
 	CompatDivergent = "divergent"
-	CompatOnly      = "emberwire-only"
+	CompatOnly      = "hotloop-flow-only"
 )
 
 // PropByName returns the named property declaration.
@@ -632,6 +632,6 @@ var Default = NewRegistry()
 // in every test run — not on a customer's cluster at deploy time.
 func MustRegister(d Descriptor, f Factory) {
 	if err := Default.Register(d, f); err != nil {
-		panic("emberwire: registering node type: " + err.Error())
+		panic("hotloop-flow: registering node type: " + err.Error())
 	}
 }

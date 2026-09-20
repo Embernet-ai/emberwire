@@ -3,7 +3,7 @@
         "id": "bench",
         "type": "tab",
         "label": "bench",
-        "info": "The comparison flow. One file, deployed unchanged to both runtimes.\n\nFive nodes: an HTTP endpoint, three property edits, a reply. Nothing in it is\nEmberwire-specific and nothing in it is fast on purpose — it is the shape of a\nsmall real flow, which is what the comparison is supposed to be about."
+        "info": "The comparison flow. One file, deployed unchanged to both runtimes.\n\nFive nodes: an HTTP endpoint, three property edits, a reply. Nothing in it is\nHotLoop Flow-specific and nothing in it is fast on purpose — it is the shape of a\nsmall real flow, which is what the comparison is supposed to be about."
     },
     {
         "id": "bench-in",

@@ -8,8 +8,8 @@ import (
 	"sync"
 	"time"
 
-	"github.com/embernet-ai/emberwire/internal/engine"
-	"github.com/embernet-ai/emberwire/internal/node"
+	"github.com/HotLoop-io/hotloop-flow/internal/engine"
+	"github.com/HotLoop-io/hotloop-flow/internal/node"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
@@ -48,14 +48,14 @@ type postgresConfig struct {
 
 func registerPostgresConfig() {
 	node.MustRegister(node.Descriptor{
-		Type:     "emberwire-postgres",
+		Type:     "hotloop-flow-postgres",
 		Category: node.CategoryConfig,
 		Color:    colorStorage,
 		Icon:     "db",
 		IsConfig: true,
 		Compatibility: node.Compatibility{
 			Level: node.CompatOnly,
-			Notes: "Emberwire's own PostgreSQL connection. Targets the App Store's " +
+			Notes: "HotLoop Flow's own PostgreSQL connection. Targets the App Store's " +
 				"postgresql-app and timescale-db-pod, which share a wire protocol.",
 		},
 		Props: []node.Prop{
@@ -107,7 +107,7 @@ func newPostgresConfig(def *node.Definition) (node.Node, error) {
 	// URL-significant characters does not need escaping — that is a classic way
 	// to get a connection that fails only for some passwords.
 	dsn := fmt.Sprintf(
-		"host=%s port=%d dbname=%s user=%s password=%s sslmode=%s application_name=emberwire",
+		"host=%s port=%d dbname=%s user=%s password=%s sslmode=%s application_name=hotloop-flow",
 		quotePGKeyword(host), port, quotePGKeyword(database),
 		quotePGKeyword(user), quotePGKeyword(password), sslmode,
 	)
@@ -209,13 +209,13 @@ func registerPostgres() {
 		LabelProp:    "name",
 		Compatibility: node.Compatibility{
 			Level: node.CompatOnly,
-			Notes: "Emberwire's own node. Writes to and reads from PostgreSQL or " +
+			Notes: "HotLoop Flow's own node. Writes to and reads from PostgreSQL or " +
 				"TimescaleDB, with batch insert for message sequences.",
 		},
 		Props: []node.Prop{
 			{Name: "name", Kind: node.PropString, Label: "Name"},
 			{Name: "server", Kind: node.PropConfigRef, Label: "Server",
-				ConfigType: "emberwire-postgres", Required: true},
+				ConfigType: "hotloop-flow-postgres", Required: true},
 			{Name: "mode", Kind: node.PropSelect, Label: "Mode", Default: "insert",
 				Options: []node.Option{
 					{Value: "insert", Label: "Insert rows"},

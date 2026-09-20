@@ -1,6 +1,6 @@
 # Benchmarks
 
-Every comparative number in this repository came out of `emberwire bench`. None
+Every comparative number in this repository came out of `hotloop-flow bench`. None
 of them came off a forum.
 
 That is the whole reason this directory exists. The throughput and memory
@@ -15,7 +15,7 @@ session, one load generator, one flow file, both runtimes.
 property edits, a reply.
 
 It is deployed to **both** runtimes **unchanged**. That is not a convenience, it
-is the point — the file is Node-RED v1 and Emberwire reads it as-is, so there is
+is the point — the file is Node-RED v1 and HotLoop Flow reads it as-is, so there is
 no translation step to argue about. Both answer `ok` with a 200 to the same
 request.
 
@@ -28,19 +28,19 @@ Both runtimes as containers, so the comparison is between two things deployed
 the way they are actually deployed:
 
 ```bash
-podman build -t localhost/emberwire:bench .
+podman build -t localhost/hotloop-flow:bench .
 podman pull docker.io/nodered/node-red:latest
 
 mkdir -p /tmp/ewbench /tmp/nrbench
 cp docs/bench/bench-flow.json /tmp/ewbench/flows.json
 cp docs/bench/bench-flow.json /tmp/nrbench/flows.json
 
-HASH=$(podman run --rm localhost/emberwire:bench hash-password -password benchbench123)
+HASH=$(podman run --rm localhost/hotloop-flow:bench hash-password -password benchbench123)
 podman run -d --name ew-bench -p 18811:1880 -v /tmp/ewbench:/data:Z \
-  -e EMBERWIRE_DATA_DIR=/data -e EMBERWIRE_ADMIN_USER=admin \
-  -e EMBERWIRE_ADMIN_PASSWORD_HASH="$HASH" \
-  -e EMBERWIRE_CREDENTIAL_SECRET=bench-secret -e EMBERWIRE_LOG_LEVEL=warn \
-  localhost/emberwire:bench
+  -e HOTLOOP_FLOW_DATA_DIR=/data -e HOTLOOP_FLOW_ADMIN_USER=admin \
+  -e HOTLOOP_FLOW_ADMIN_PASSWORD_HASH="$HASH" \
+  -e HOTLOOP_FLOW_CREDENTIAL_SECRET=bench-secret -e HOTLOOP_FLOW_LOG_LEVEL=warn \
+  localhost/hotloop-flow:bench
 
 podman run -d --name nr-bench -p 18812:1880 -v /tmp/nrbench:/data:Z \
   docker.io/nodered/node-red:latest
@@ -49,9 +49,9 @@ podman run -d --name nr-bench -p 18812:1880 -v /tmp/nrbench:/data:Z \
 Then the same command against each, from the same shell:
 
 ```bash
-emberwire bench -mode http -target http://127.0.0.1:18811 -path /bench \
+hotloop-flow bench -mode http -target http://127.0.0.1:18811 -path /bench \
   -duration 30s -warmup 5s -connections 8
-emberwire bench -mode http -target http://127.0.0.1:18812 -path /bench \
+hotloop-flow bench -mode http -target http://127.0.0.1:18812 -path /bench \
   -duration 30s -warmup 5s -connections 8
 ```
 
@@ -73,9 +73,9 @@ costs nothing to be even-handed about it.
 ## Results
 
 **Measured 2026-08-08.** Linux, 12 CPUs, both runtimes in rootless podman on the
-same host, `nodered/node-red:latest` (Node-RED 4.x), Emberwire at `05d4235`.
+same host, `nodered/node-red:latest` (Node-RED 4.x), HotLoop Flow at `05d4235`.
 
-| | Emberwire | Node-RED | |
+| | HotLoop Flow | Node-RED | |
 |---|---|---|---|
 | Image size | **25.1 MB** | 717 MB | 29× |
 | Memory, idle | **4.8 MB** | 54.6 MB | 11× |
@@ -86,7 +86,7 @@ same host, `nodered/node-red:latest` (Node-RED 4.x), Emberwire at `05d4235`.
 | Latency p99 | **16.72 ms** | 23.14 ms | 1.4× |
 | Cold start | **2.1–2.3 s** | 4.6–5.5 s | ~2.3× |
 
-Requests completed in the 30-second window: 103,800 against Emberwire, 38,700
+Requests completed in the 30-second window: 103,800 against HotLoop Flow, 38,700
 against Node-RED.
 
 ### What these numbers are not
@@ -100,7 +100,7 @@ surface both runtimes present identically, and it is what somebody using the app
 experiences. It is not a measurement of either scheduler in isolation. For that:
 
 ```
-emberwire bench -mode engine -chain 5 -messages 200000
+hotloop-flow bench -mode engine -chain 5 -messages 200000
 ```
 
 which pushes messages through a five-node chain with no I/O in the path and

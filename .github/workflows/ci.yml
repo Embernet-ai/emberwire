@@ -17,9 +17,9 @@ jobs:
     name: Test
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
-      - uses: actions/setup-go@v5
+      - uses: actions/setup-go@v7
         with:
           go-version: ${{ env.GO_VERSION }}
           cache: true
@@ -71,20 +71,28 @@ jobs:
     name: Static build
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
-      - uses: actions/setup-go@v5
+      - uses: actions/setup-go@v7
         with:
           go-version: ${{ env.GO_VERSION }}
           cache: true
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v7
         with:
-          node-version: '22'
+          node-version: '24'
           cache: npm
           cache-dependency-path: web/package-lock.json
 
-      - name: Build the editor bundle
+      # web/src/tokens.css is a vendored copy of the canonical file in
+      # HotLoop-io/HotLoop-io. If they drift, fail here rather than ship an editor
+      # whose colors quietly disagree with the brand standard.
+      - name: Design tokens match the canonical copy
+        run: |
+          curl -fsSL https://raw.githubusercontent.com/HotLoop-io/HotLoop-io/main/brand/tokens.css -o "$RUNNER_TEMP/canonical-tokens.css"
+          diff -u --strip-trailing-cr "$RUNNER_TEMP/canonical-tokens.css" web/src/tokens.css
+
+      - name: Type-check and build the editor bundle
         # The other jobs compile against the committed placeholder, which is
         # enough for vet and tests. This job must not: it reports the binary
         # size and enforces the budget, and a binary carrying a 200-byte
@@ -93,6 +101,7 @@ jobs:
         working-directory: web
         run: |
           npm ci
+          npm run typecheck
           npm run build
           test -s dist/index.html
 
@@ -100,7 +109,7 @@ jobs:
         env:
           CGO_ENABLED: "0"
           GOOS: linux
-        run: go build -trimpath -ldflags="-s -w" -buildvcs=false -o emberwire ./cmd/emberwire
+        run: go build -trimpath -ldflags="-s -w" -buildvcs=false -o hotloop-flow ./cmd/hotloop-flow
 
       - name: The editor is actually in the binary
         # web.Assets falls back to a plain-text explanation when the bundle is
@@ -109,7 +118,7 @@ jobs:
         # the built index.html, it is not in any Go source, and it cannot be
         # present unless the real bundle was embedded.
         run: |
-          if ! grep -qa "dark-mode-pending" emberwire; then
+          if ! grep -qa "dark-mode-pending" hotloop-flow; then
             echo "::error::the editor bundle is not embedded in the binary"
             exit 1
           fi
@@ -118,8 +127,8 @@ jobs:
         # The whole premise of this project is that it is small. If the binary
         # grows past the budget, that is a finding, not a footnote.
         run: |
-          SIZE=$(stat -c%s emberwire)
-          echo "emberwire: $SIZE bytes ($((SIZE/1024/1024)) MiB)"
+          SIZE=$(stat -c%s hotloop-flow)
+          echo "hotloop-flow: $SIZE bytes ($((SIZE/1024/1024)) MiB)"
           echo "### Binary size: $((SIZE/1024/1024)) MiB" >> "$GITHUB_STEP_SUMMARY"
           if [ "$SIZE" -gt 41943040 ]; then
             echo "::error::binary exceeds the 40 MiB budget"
@@ -128,8 +137,8 @@ jobs:
 
       - name: Confirm the binary is actually static
         run: |
-          file emberwire
-          if file emberwire | grep -q "dynamically linked"; then
+          file hotloop-flow
+          if file hotloop-flow | grep -q "dynamically linked"; then
             echo "::error::binary is dynamically linked; it will not run on distroless/static"
             exit 1
           fi
@@ -138,9 +147,9 @@ jobs:
     name: Fuzz smoke
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
-      - uses: actions/setup-go@v5
+      - uses: actions/setup-go@v7
         with:
           go-version: ${{ env.GO_VERSION }}
           cache: true

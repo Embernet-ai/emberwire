@@ -1,4 +1,4 @@
-module github.com/embernet-ai/emberwire
+module github.com/HotLoop-io/hotloop-flow
 
 go 1.26.4
 

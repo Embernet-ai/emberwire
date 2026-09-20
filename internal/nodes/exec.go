@@ -12,9 +12,9 @@ import (
 	"sync"
 	"time"
 
-	"github.com/embernet-ai/emberwire/internal/engine"
-	"github.com/embernet-ai/emberwire/internal/node"
-	"github.com/embernet-ai/emberwire/internal/shell"
+	"github.com/HotLoop-io/hotloop-flow/internal/engine"
+	"github.com/HotLoop-io/hotloop-flow/internal/node"
+	"github.com/HotLoop-io/hotloop-flow/internal/shell"
 )
 
 func init() {
@@ -96,7 +96,7 @@ func registerExec() {
 			{Name: "oldrc", Kind: node.PropBool, Label: "Use the old return-code format"},
 			{Name: "winHide", Kind: node.PropBool, Label: "Hide the console window (Windows)"},
 			{Name: "ew_maxOutput", Kind: node.PropNumber, Label: "Output limit (bytes)",
-				Help: "Per stream. Emberwire's own; Node-RED buffers without a limit."},
+				Help: "Per stream. HotLoop Flow's own; Node-RED buffers without a limit."},
 		},
 		Help: "Runs an external command and returns its stdout, stderr and exit " +
 			"status on three outputs. Disabled until the operator lists the commands " +

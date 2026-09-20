@@ -41,11 +41,11 @@
   white-space: nowrap;
 }
 
-.tab:hover { background: var(--ember-red-wash); border-color: transparent; color: var(--text-main); }
+.tab:hover { background: var(--accent-wash); border-color: transparent; color: var(--text-main); }
 
 .tab.active {
-  color: var(--ember-red);
-  border-bottom-color: var(--ember-red);
+  color: var(--accent-text);
+  border-bottom-color: var(--accent);
   background: transparent;
 }
 
@@ -116,7 +116,7 @@
   border: 1px solid transparent;
 }
 
-.palette-item:hover { background: var(--ember-red-wash); border-color: var(--border-color); }
+.palette-item:hover { background: var(--accent-wash); border-color: var(--border-color); }
 .palette-item:active { cursor: grabbing; }
 
 .swatch { width: 12px; height: 12px; border-radius: 3px; flex-shrink: 0; }
@@ -138,10 +138,10 @@
   pointer-events: stroke;
 }
 
-.wire:hover { stroke: var(--ember-red); opacity: 1; stroke-width: 3; cursor: pointer; }
+.wire:hover { stroke: var(--accent); opacity: 1; stroke-width: 3; cursor: pointer; }
 
 .wire-pending {
-  stroke: var(--ember-red);
+  stroke: var(--accent);
   stroke-dasharray: 6 4;
   opacity: 1;
   pointer-events: none;
@@ -155,7 +155,7 @@
   filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.15));
 }
 
-.node.selected .node-body { stroke: var(--ember-red); stroke-width: 2.5; }
+.node.selected .node-body { stroke: var(--accent); stroke-width: 2.5; }
 .node.disabled { opacity: 0.45; }
 .node.unknown .node-body { stroke-dasharray: 4 3; stroke: var(--danger); }
 
@@ -165,14 +165,14 @@
   fill: #1a1a1a;
   font-size: 12px;
   font-weight: 600;
-  font-family: 'Inter', -apple-system, sans-serif;
+  font-family: var(--hl-font);
   pointer-events: none;
   user-select: none;
 }
 
 .port { fill: var(--card-bg); stroke: var(--text-sub); stroke-width: 1.5; }
 .port-out { cursor: crosshair; }
-.port-out:hover { fill: var(--ember-red); stroke: var(--ember-red); r: 7; }
+.port-out:hover { fill: var(--accent); stroke: var(--accent); r: 7; }
 
 .status-dot { stroke: none; }
 .status-dot.fill-green { fill: var(--success); }
@@ -189,15 +189,15 @@
 .status-text {
   fill: var(--text-sub);
   font-size: 10px;
-  font-family: 'Inter', -apple-system, sans-serif;
+  font-family: var(--hl-font);
   pointer-events: none;
   user-select: none;
 }
 
 .marquee {
-  fill: var(--ember-red);
+  fill: var(--accent);
   fill-opacity: 0.08;
-  stroke: var(--ember-red);
+  stroke: var(--accent);
   stroke-width: 1;
   stroke-dasharray: 4 3;
   pointer-events: none;
@@ -257,7 +257,7 @@
   border-top: 1px solid var(--border-color);
 }
 
-.dialog-error { flex: 1; color: var(--danger); font-size: 12px; }
+.dialog-error { flex: 1; color: var(--danger-text); font-size: 12px; }
 
 .field { margin-bottom: 14px; }
 .field-inline { display: flex; align-items: center; gap: 8px; }
@@ -276,12 +276,12 @@
 .field input[type="text"], .field input[type="number"], .field input[type="password"],
 .field select, .field textarea { width: 100%; }
 
-.field .required { color: var(--ember-red); }
+.field .required { color: var(--danger-text); }
 
 .field-help { font-size: 11px; color: var(--text-sub); margin-top: 4px; line-height: 1.5; }
 
 textarea.code {
-  font-family: 'JetBrains Mono', 'Cascadia Code', Consolas, monospace;
+  font-family: var(--hl-font-mono);
   font-size: 12.5px;
   line-height: 1.55;
   resize: vertical;

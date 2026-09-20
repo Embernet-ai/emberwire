@@ -63,7 +63,7 @@ func WrapMsg(data map[string]any) *Msg {
 //
 // Node-RED's RED.util.generateId concatenates eight random bytes as hex, and
 // node ids, message ids and group ids all share that shape. Matching it means an
-// Emberwire-generated id is indistinguishable from a Node-RED one, so exported
+// HotLoop Flow-generated id is indistinguishable from a Node-RED one, so exported
 // flows stay interchangeable. crypto/rand replaces Math.random; the extra cost is
 // irrelevant next to the work of actually moving a message.
 func GenerateID() string {
@@ -190,7 +190,7 @@ const maxCloneDepth = 512
 // makes the last-wired branch share mutable state with the sender. That is a
 // documented memory optimisation and an undocumented source of aliasing bugs —
 // two branches editing what looks like their own message and stepping on each
-// other. Emberwire clones for every recipient. The cost is bounded by the
+// other. HotLoop Flow clones for every recipient. The cost is bounded by the
 // ImmutableBytes fast path above, which covers the payloads big enough for the
 // copy to matter.
 func (m *Msg) Clone() *Msg {

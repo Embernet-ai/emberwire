@@ -1,6 +1,6 @@
 # Build output
-/emberwire
-/emberwire.exe
+/hotloop-flow
+/hotloop-flow.exe
 /dist/
 /.deploy/
 

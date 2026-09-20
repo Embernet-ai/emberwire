@@ -1,9 +1,9 @@
-// Package config loads Emberwire's runtime configuration.
+// Package config loads HotLoop Flow's runtime configuration.
 //
 // Node-RED's settings.js is executable JavaScript: adminAuth can be a function,
 // https can be a function returning cert options, storageModule is a require().
 // That makes it impossible to validate, diff, template from a ConfigMap, or
-// reason about without running it. Emberwire's configuration is declarative
+// reason about without running it. HotLoop Flow's configuration is declarative
 // YAML with environment overrides, which is what a Helm chart can actually
 // produce and what an operator can actually review.
 package config
@@ -219,31 +219,31 @@ func Load(path string) (Config, error) {
 	return cfg, nil
 }
 
-// applyEnv overlays EMBERWIRE_* environment variables.
+// applyEnv overlays HOTLOOP_FLOW_* environment variables.
 //
 // Environment beats file so that a Helm chart can put non-secret settings in a
 // ConfigMap and inject the secret ones from a Secret, which is the only sane
 // split in Kubernetes.
 func applyEnv(cfg *Config) {
-	envStr("EMBERWIRE_HOST", &cfg.Server.Host)
-	envInt("EMBERWIRE_PORT", &cfg.Server.Port)
-	envStr("EMBERWIRE_ADMIN_ROOT", &cfg.Server.AdminRoot)
-	envStr("EMBERWIRE_HTTP_ROOT", &cfg.Server.HTTPRoot)
+	envStr("HOTLOOP_FLOW_HOST", &cfg.Server.Host)
+	envInt("HOTLOOP_FLOW_PORT", &cfg.Server.Port)
+	envStr("HOTLOOP_FLOW_ADMIN_ROOT", &cfg.Server.AdminRoot)
+	envStr("HOTLOOP_FLOW_HTTP_ROOT", &cfg.Server.HTTPRoot)
 
-	envStr("EMBERWIRE_DATA_DIR", &cfg.Data.Dir)
-	envStr("EMBERWIRE_FLOW_FILE", &cfg.Data.FlowFile)
-	envStr("EMBERWIRE_CREDENTIAL_SECRET", &cfg.Data.CredentialSecret)
+	envStr("HOTLOOP_FLOW_DATA_DIR", &cfg.Data.Dir)
+	envStr("HOTLOOP_FLOW_FLOW_FILE", &cfg.Data.FlowFile)
+	envStr("HOTLOOP_FLOW_CREDENTIAL_SECRET", &cfg.Data.CredentialSecret)
 
-	envInt("EMBERWIRE_INBOX_CAPACITY", &cfg.Runtime.InboxCapacity)
-	envStr("EMBERWIRE_OVERFLOW", &cfg.Runtime.Overflow)
+	envInt("HOTLOOP_FLOW_INBOX_CAPACITY", &cfg.Runtime.InboxCapacity)
+	envStr("HOTLOOP_FLOW_OVERFLOW", &cfg.Runtime.Overflow)
 
-	envStr("EMBERWIRE_LOG_LEVEL", &cfg.Logging.Level)
-	envStr("EMBERWIRE_LOG_FORMAT", &cfg.Logging.Format)
+	envStr("HOTLOOP_FLOW_LOG_LEVEL", &cfg.Logging.Level)
+	envStr("HOTLOOP_FLOW_LOG_FORMAT", &cfg.Logging.Format)
 
 	// A single admin account can be supplied entirely from the environment,
 	// which is what makes a first-run container usable without mounting a file.
-	user := os.Getenv("EMBERWIRE_ADMIN_USER")
-	hash := os.Getenv("EMBERWIRE_ADMIN_PASSWORD_HASH")
+	user := os.Getenv("HOTLOOP_FLOW_ADMIN_USER")
+	hash := os.Getenv("HOTLOOP_FLOW_ADMIN_PASSWORD_HASH")
 	if user != "" && hash != "" {
 		cfg.Auth.Users = append(cfg.Auth.Users, User{
 			Username:     user,
@@ -252,25 +252,25 @@ func applyEnv(cfg *Config) {
 		})
 	}
 
-	if envBool("EMBERWIRE_INSECURE") {
+	if envBool("HOTLOOP_FLOW_INSECURE") {
 		cfg.Auth.Enabled = false
 	}
-	if envBool("EMBERWIRE_ALLOW_PLAINTEXT_CREDENTIALS") {
+	if envBool("HOTLOOP_FLOW_ALLOW_PLAINTEXT_CREDENTIALS") {
 		cfg.Data.AllowPlaintextCredentials = true
 	}
-	if envBool("EMBERWIRE_DISCOVERY_ENABLED") {
+	if envBool("HOTLOOP_FLOW_DISCOVERY_ENABLED") {
 		cfg.Discovery.Enabled = true
 	}
-	if v := os.Getenv("EMBERWIRE_DISCOVERY_CIDRS"); v != "" {
+	if v := os.Getenv("HOTLOOP_FLOW_DISCOVERY_CIDRS"); v != "" {
 		cfg.Discovery.AllowedCIDRs = splitList(v)
 	}
-	if envBool("EMBERWIRE_EXEC_ENABLED") {
+	if envBool("HOTLOOP_FLOW_EXEC_ENABLED") {
 		cfg.Exec.Enabled = true
 	}
-	if v := os.Getenv("EMBERWIRE_EXEC_ALLOWED_COMMANDS"); v != "" {
+	if v := os.Getenv("HOTLOOP_FLOW_EXEC_ALLOWED_COMMANDS"); v != "" {
 		cfg.Exec.AllowedCommands = splitList(v)
 	}
-	if v := os.Getenv("EMBERWIRE_FILE_ALLOWED_PATHS"); v != "" {
+	if v := os.Getenv("HOTLOOP_FLOW_FILE_ALLOWED_PATHS"); v != "" {
 		cfg.Files.AllowedPaths = splitList(v)
 	}
 }
@@ -289,7 +289,7 @@ func envInt(key string, dst *int) {
 	}
 }
 
-// envBool treats only the explicit affirmatives as true, so EMBERWIRE_INSECURE=0
+// envBool treats only the explicit affirmatives as true, so HOTLOOP_FLOW_INSECURE=0
 // or =false does not disable authentication by accident.
 func envBool(key string) bool {
 	switch strings.ToLower(strings.TrimSpace(os.Getenv(key))) {
@@ -364,13 +364,13 @@ func (c *Config) Validate() error {
 	if !c.Auth.Enabled {
 		return &ErrInsecure{Reason: "authentication is disabled. " +
 			"Anyone who can reach this port can deploy a flow, and a flow can run commands. " +
-			"Set EMBERWIRE_INSECURE=true to override this on a trusted, isolated network."}
+			"Set HOTLOOP_FLOW_INSECURE=true to override this on a trusted, isolated network."}
 	}
 	if len(c.Auth.Users) == 0 {
 		return &ErrInsecure{Reason: "authentication is enabled but no users are configured. " +
-			"Set auth.users in the config file, or EMBERWIRE_ADMIN_USER and " +
-			"EMBERWIRE_ADMIN_PASSWORD_HASH in the environment. " +
-			"Generate a hash with: emberwire hash-password"}
+			"Set auth.users in the config file, or HOTLOOP_FLOW_ADMIN_USER and " +
+			"HOTLOOP_FLOW_ADMIN_PASSWORD_HASH in the environment. " +
+			"Generate a hash with: hotloop-flow hash-password"}
 	}
 	for i, u := range c.Auth.Users {
 		if u.Username == "" {
@@ -384,7 +384,7 @@ func (c *Config) Validate() error {
 		// prefix and fails on anything else.
 		if _, err := bcrypt.Cost([]byte(u.PasswordHash)); err != nil {
 			return fmt.Errorf("auth.users[%d] (%s): passwordHash is not a bcrypt hash. "+
-				"Generate one with: emberwire hash-password", i, u.Username)
+				"Generate one with: hotloop-flow hash-password", i, u.Username)
 		}
 	}
 
@@ -392,8 +392,8 @@ func (c *Config) Validate() error {
 	if c.Data.CredentialSecret == "" && !c.Data.AllowPlaintextCredentials {
 		return &ErrInsecure{Reason: "no credential secret is set, so node credentials " +
 			"would be written to disk in plaintext. " +
-			"Set data.credentialSecret or EMBERWIRE_CREDENTIAL_SECRET, " +
-			"or set EMBERWIRE_ALLOW_PLAINTEXT_CREDENTIALS=true if this instance holds no secrets."}
+			"Set data.credentialSecret or HOTLOOP_FLOW_CREDENTIAL_SECRET, " +
+			"or set HOTLOOP_FLOW_ALLOW_PLAINTEXT_CREDENTIALS=true if this instance holds no secrets."}
 	}
 
 	// Discovery.

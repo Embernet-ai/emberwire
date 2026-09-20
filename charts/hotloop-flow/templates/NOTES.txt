@@ -1,8 +1,8 @@
-Emberwire {{ .Chart.AppVersion }} — {{ include "emberwire-app.fullname" . }}
+HotLoop Flow {{ .Chart.AppVersion }} — {{ include "hotloop-flow.fullname" . }}
 
 Network mode: {{ .Values.network.mode | default "cluster" }}
 {{- if eq (.Values.network.mode | default "cluster") "macvlan" }}
-  Attached to {{ include "emberwire-app.macvlanNetwork" . }} on {{ .Values.network.macvlan.master }}.
+  Attached to {{ include "hotloop-flow.macvlanNetwork" . }} on {{ .Values.network.macvlan.master }}.
   The pod has its own MAC and IP on that VLAN, so it can see the OT segment
   directly and several instances can run on one node without colliding.
 {{- else if eq (.Values.network.mode | default "cluster") "host" }}
@@ -15,12 +15,12 @@ Network mode: {{ .Values.network.mode | default "cluster" }}
 
 Get the admin password:
 
-  kubectl get secret -n {{ .Release.Namespace }} {{ include "emberwire-app.secretName" . }} \
+  kubectl get secret -n {{ .Release.Namespace }} {{ include "hotloop-flow.secretName" . }} \
     -o jsonpath='{.data.admin-password}' | base64 -d
 
 Log in:
 
-  curl -sX POST http://{{ include "emberwire-app.fullname" . }}.{{ .Release.Namespace }}.svc.cluster.local:{{ .Values.service.port }}/auth/token \
+  curl -sX POST http://{{ include "hotloop-flow.fullname" . }}.{{ .Release.Namespace }}.svc.cluster.local:{{ .Values.service.port }}/auth/token \
     -H 'Content-Type: application/json' \
     -d '{"username":"{{ .Values.auth.username }}","password":"<password>"}'
 
@@ -42,5 +42,5 @@ Discovery is enabled and limited to:
 {{- end }}
 {{- end }}
 
-Docs: https://github.com/embernet-ai/emberwire
-Node compatibility: https://github.com/embernet-ai/emberwire/blob/main/docs/compatibility.md
+Docs: https://github.com/HotLoop-io/hotloop-flow
+Node compatibility: https://github.com/HotLoop-io/hotloop-flow/blob/main/docs/compatibility.md

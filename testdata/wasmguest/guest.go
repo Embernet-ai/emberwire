@@ -1,6 +1,6 @@
 //go:build wasip1
 
-// A reference Emberwire WASM guest.
+// A reference HotLoop Flow WASM guest.
 //
 // Built with:
 //
@@ -25,7 +25,7 @@ import (
 // host is about to read, which produces corruption that looks like a host bug.
 var buffers = map[uintptr][]byte{}
 
-//go:wasmexport emberwire_alloc
+//go:wasmexport hotloop_flow_alloc
 func alloc(size uint32) uint32 {
 	buf := make([]byte, size)
 	ptr := uintptr(unsafe.Pointer(&buf[0]))
@@ -33,7 +33,7 @@ func alloc(size uint32) uint32 {
 	return uint32(ptr)
 }
 
-//go:wasmexport emberwire_free
+//go:wasmexport hotloop_flow_free
 func free(ptr uint32, _ uint32) {
 	delete(buffers, uintptr(ptr))
 }
@@ -56,7 +56,7 @@ type response struct {
 	Logs   []string           `json:"logs,omitempty"`
 }
 
-//go:wasmexport emberwire_process
+//go:wasmexport hotloop_flow_process
 func process(ptr uint32, length uint32) uint64 {
 	input := unsafe.Slice((*byte)(unsafe.Pointer(uintptr(ptr))), length)
 

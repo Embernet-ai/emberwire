@@ -1,10 +1,10 @@
 apiVersion: v1
 kind: ConfigMap
 metadata:
-  name: {{ include "emberwire-app.configMapName" . }}
+  name: {{ include "hotloop-flow.configMapName" . }}
   namespace: {{ .Release.Namespace }}
   labels:
-    {{- include "emberwire-app.labels" . | nindent 4 }}
+    {{- include "hotloop-flow.labels" . | nindent 4 }}
 data:
   # Declarative, and validated at startup with unknown keys rejected. Node-RED's
   # settings.js is executable JavaScript, which is why it cannot be templated

@@ -7,8 +7,8 @@ import (
 	"sync"
 	"time"
 
-	"github.com/embernet-ai/emberwire/internal/engine"
-	"github.com/embernet-ai/emberwire/internal/node"
+	"github.com/HotLoop-io/hotloop-flow/internal/engine"
+	"github.com/HotLoop-io/hotloop-flow/internal/node"
 )
 
 func init() {
@@ -169,7 +169,7 @@ func registerDelay() {
 			{Name: "outputs", Kind: node.PropNumber, Label: "Outputs", Default: 1,
 				Help: "Set to 2 to send dropped messages out of a second output instead of discarding them."},
 			{Name: "ew_maxQueue", Kind: node.PropNumber, Label: "Queue limit",
-				Help: "How many messages this node will hold before refusing. Emberwire's own; " +
+				Help: "How many messages this node will hold before refusing. HotLoop Flow's own; " +
 					"Node-RED's queue has no limit."},
 		},
 		Help: "Holds messages back, either individually or as a rate limiter. " +
@@ -700,7 +700,7 @@ func registerTrigger() {
 			{Name: "outputs", Kind: node.PropNumber, Label: "Outputs", Default: 1,
 				Help: "Set to 2 to send the second message out of its own output."},
 			{Name: "ew_maxTimers", Kind: node.PropNumber, Label: "Timer limit",
-				Help: "How many timers may be armed at once. Emberwire's own; Node-RED has no limit."},
+				Help: "How many timers may be armed at once. HotLoop Flow's own; Node-RED has no limit."},
 		},
 		Help: "Sends a message when one arrives, then optionally a second after a " +
 			"delay. Grouping by topic gives every tag its own timer, which is how " +

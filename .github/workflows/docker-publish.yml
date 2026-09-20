@@ -27,7 +27,7 @@ jobs:
     name: Build and push
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           ref: ${{ inputs.tag || github.ref }}
 
@@ -42,20 +42,20 @@ jobs:
             *) echo "::error::refusing to build '$REF' — images are published from version tags only"; exit 1 ;;
           esac
 
-      - uses: docker/setup-qemu-action@v3
+      - uses: docker/setup-qemu-action@v4
 
-      - uses: docker/setup-buildx-action@v3
+      - uses: docker/setup-buildx-action@v4
 
-      - uses: docker/login-action@v3
+      - uses: docker/login-action@v4
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
       - id: meta
-        uses: docker/metadata-action@v5
+        uses: docker/metadata-action@v6
         with:
-          images: ghcr.io/embernet-ai/emberwire
+          images: ghcr.io/hotloop-io/hotloop-flow
           # No branch tag and no bare sha tag: both produce images that are
           # not a released version. The sha is still recorded, but only as a
           # suffix on the version it belongs to.
@@ -65,7 +65,7 @@ jobs:
             type=semver,pattern={{major}}
 
       - name: Build and push
-        uses: docker/build-push-action@v6
+        uses: docker/build-push-action@v7
         with:
           context: .
           # arm64 because the edge fleet is not all x86 — the RT kernel and
@@ -85,7 +85,7 @@ jobs:
         run: |
           VERSION='${{ inputs.tag || github.ref_name }}'
           VERSION="${VERSION#v}"
-          docker pull "ghcr.io/embernet-ai/emberwire:$VERSION"
-          SIZE=$(docker image inspect "ghcr.io/embernet-ai/emberwire:$VERSION" --format '{{.Size}}')
+          docker pull "ghcr.io/hotloop-io/hotloop-flow:$VERSION"
+          SIZE=$(docker image inspect "ghcr.io/hotloop-io/hotloop-flow:$VERSION" --format '{{.Size}}')
           echo "### Image size: $((SIZE/1024/1024)) MiB" >> "$GITHUB_STEP_SUMMARY"
           echo "Measured 2026-08-08: ours 25.1 MB, nodered/node-red:latest 717 MB." >> "$GITHUB_STEP_SUMMARY"

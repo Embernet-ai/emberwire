@@ -115,7 +115,7 @@ export class Canvas {
     });
     this.svg.addEventListener('drop', (e) => {
       e.preventDefault();
-      const type = e.dataTransfer?.getData('text/emberwire-node');
+      const type = e.dataTransfer?.getData('text/hotloop-flow-node');
       if (!type) return;
       const at = this.toCanvas(e.clientX, e.clientY);
       const entry = this.graph.addNode(type, at);

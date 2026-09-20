@@ -1,6 +1,6 @@
 # ── Image ────────────────────────────────────────────────────────────────────
 image:
-  repository: ghcr.io/embernet-ai/emberwire
+  repository: ghcr.io/hotloop-io/hotloop-flow
   tag: ""            # defaults to .Chart.AppVersion
   pullPolicy: IfNotPresent
 
@@ -8,7 +8,7 @@ imagePullSecrets:
   - name: ghcr-secret
 
 # ── Replicas ─────────────────────────────────────────────────────────────────
-# One. Emberwire holds flow state and open connections to brokers and PLCs;
+# One. HotLoop Flow holds flow state and open connections to brokers and PLCs;
 # two replicas behind one Service would both subscribe and both write. Scaling
 # out means deploying a second instance with its own flows, which is what the
 # multi-instance support in the App Store is for.
@@ -58,7 +58,7 @@ embernet:
 
 
 # ── Networking ───────────────────────────────────────────────────────────────
-# Three modes. This is the reason Emberwire exists on a plant floor: a flow
+# Three modes. This is the reason HotLoop Flow exists on a plant floor: a flow
 # engine that can only see what k3s routes to it cannot inventory an OT segment.
 #
 #   cluster  ClusterIP only. Multi-instance safe, unlimited per node.
@@ -127,7 +127,7 @@ discovery:
 #
 # This is the node behind CVE-2025-41656: unauthenticated remote code execution
 # against a default Node-RED, reached by deploying a flow with an exec node in
-# it. Emberwire will not start without authentication, and this list is the
+# it. HotLoop Flow will not start without authentication, and this list is the
 # second lock — anyone who does get edit access still cannot run a command that
 # is not named here. There is no shell either, so an allowed command cannot be
 # chained into an arbitrary one.
@@ -166,7 +166,7 @@ persistence:
   annotations: {}
 
 # ── Authentication ───────────────────────────────────────────────────────────
-# Emberwire refuses to start without this. Leave passwordHash empty and the
+# HotLoop Flow refuses to start without this. Leave passwordHash empty and the
 # chart generates a password on first install and keeps it across upgrades.
 auth:
   enabled: true
@@ -180,7 +180,7 @@ auth:
 # Generated on first install and preserved across upgrades by reading the
 # existing Secret back. If it ever regenerates, every stored credential becomes
 # undecryptable — which is why this is not a plain randAlphaNum.
-emberwire:
+hotloopFlow:
   credentialSecret: ""
 
 # ── Runtime ──────────────────────────────────────────────────────────────────

@@ -28,9 +28,9 @@ import (
 	"sync"
 	"time"
 
+	"github.com/HotLoop-io/hotloop-flow/internal/engine"
+	"github.com/HotLoop-io/hotloop-flow/internal/node"
 	"github.com/dop251/goja"
-	"github.com/embernet-ai/emberwire/internal/engine"
-	"github.com/embernet-ai/emberwire/internal/node"
 )
 
 // Limits bound what one invocation may do.
@@ -291,7 +291,7 @@ func (p *Program) nodeAPI(vm *goja.Runtime, sb Sandbox, res *Result) goja.Value 
 
 	must := func(name string, fn func(goja.FunctionCall) goja.Value) {
 		if err := obj.Set(name, fn); err != nil {
-			panic("emberwire: building the node API: " + err.Error())
+			panic("hotloop-flow: building the node API: " + err.Error())
 		}
 	}
 

@@ -10,9 +10,9 @@ import (
 	"sync"
 	"time"
 
+	"github.com/HotLoop-io/hotloop-flow/internal/engine"
+	"github.com/HotLoop-io/hotloop-flow/internal/node"
 	mqtt "github.com/eclipse/paho.mqtt.golang"
-	"github.com/embernet-ai/emberwire/internal/engine"
-	"github.com/embernet-ai/emberwire/internal/node"
 )
 
 const colorNetwork = "#D8BFD8"
@@ -109,7 +109,7 @@ func newMQTTBroker(def *node.Definition) (node.Node, error) {
 	if clientID == "" {
 		// Derived from the node id rather than random, so a reconnect after a
 		// restart resumes the same session instead of orphaning the old one.
-		clientID = "emberwire-" + def.Node.ID
+		clientID = "hotloop-flow-" + def.Node.ID
 	}
 
 	opts := mqtt.NewClientOptions()

@@ -8,8 +8,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/embernet-ai/emberwire/internal/engine"
-	"github.com/embernet-ai/emberwire/internal/flowhttp"
+	"github.com/HotLoop-io/hotloop-flow/internal/engine"
+	"github.com/HotLoop-io/hotloop-flow/internal/flowhttp"
 )
 
 // withRoutes gives the test its own route table and restores the previous one.

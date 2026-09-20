@@ -1,4 +1,4 @@
-// Package engine implements the Emberwire flow runtime: messages, the flow graph,
+// Package engine implements the HotLoop Flow flow runtime: messages, the flow graph,
 // the scheduler and message dispatch.
 //
 // Property expressions are Node-RED compatible. The reference implementation is

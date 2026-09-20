@@ -4,7 +4,7 @@ Generated from the node registry. Do not edit by hand — change the
 `Compatibility` field on the node's descriptor and regenerate:
 
 ```
-EMBERWIRE_UPDATE_DOCS=1 go test ./internal/nodes/
+HOTLOOP_FLOW_UPDATE_DOCS=1 go test ./internal/nodes/
 ```
 
 A node that is partially compatible and silent about how is worse than one
@@ -19,7 +19,7 @@ build if one does not.
 | **full** | Behaves as the Node-RED node of the same type does. |
 | **partial** | A subset. The notes say exactly which parts are missing. |
 | **divergent** | Deliberately behaves differently. The notes say why. |
-| **emberwire-only** | No Node-RED counterpart. |
+| **hotloop-flow-only** | No Node-RED counterpart. |
 
 ## Not supported at all
 
@@ -39,7 +39,7 @@ appear to work while routing on a literal string.
 | full | 10 |
 | partial | 26 |
 | divergent | 9 |
-| emberwire-only | 6 |
+| hotloop-flow-only | 6 |
 
 ## Common
 
@@ -59,8 +59,8 @@ appear to work while routing on a literal string.
 
 | Type | Level | Notes |
 |---|---|---|
-| `emberwire-influxdb` | emberwire-only | Emberwire's own InfluxDB connection, targeting the App Store's influxdb-app. |
-| `emberwire-postgres` | emberwire-only | Emberwire's own PostgreSQL connection. Targets the App Store's postgresql-app and timescale-db-pod, which share a wire protocol. |
+| `hotloop-flow-influxdb` | hotloop-flow-only | HotLoop Flow's own InfluxDB connection, targeting the App Store's influxdb-app. |
+| `hotloop-flow-postgres` | hotloop-flow-only | HotLoop Flow's own PostgreSQL connection. Targets the App Store's postgresql-app and timescale-db-pod, which share a wire protocol. |
 | `mqtt-broker` | partial | Connection, credentials, TLS, clean session, keepalive, birth and close messages are supported. Will messages and MQTT v5 properties are not implemented in this build. Ignored properties: `willTopic`, `willPayload`, `protocolVersion:5`. |
 | `websocket-client` | partial | Connects out and reconnects on its own when the connection drops, in payload mode or whole-message mode. Per-node TLS configuration is not implemented; the system trust store is used. Ignored properties: `tls`. |
 | `websocket-listener` | partial | Serves a websocket path, in payload mode or whole-message mode. The path shares the flow route table with the HTTP In nodes, so it cannot shadow the editor or the admin API and cannot collide with another node's path. A client that stops reading is disconnected rather than queued without limit, which Node-RED does not do. |
@@ -69,8 +69,8 @@ appear to work while routing on a literal string.
 
 | Type | Level | Notes |
 |---|---|---|
-| `netinfo` | emberwire-only | Emberwire's own node. Reports the interfaces the runtime can see, which in macvlan mode is how a flow learns its address on the OT VLAN. |
-| `scan` | emberwire-only | Emberwire's own node. Sweeps a CIDR range for OT devices and identifies Modbus and EtherNet/IP endpoints. Bounded by the discovery allowlist in the runtime configuration, not by this dialog. |
+| `netinfo` | hotloop-flow-only | HotLoop Flow's own node. Reports the interfaces the runtime can see, which in macvlan mode is how a flow learns its address on the OT VLAN. |
+| `scan` | hotloop-flow-only | HotLoop Flow's own node. Sweeps a CIDR range for OT devices and identifies Modbus and EtherNet/IP endpoints. Bounded by the discovery allowlist in the runtime configuration, not by this dialog. |
 
 ## Function
 
@@ -128,7 +128,7 @@ appear to work while routing on a literal string.
 |---|---|---|
 | `file` | divergent | Append, overwrite and delete, with the filename from a literal, a message property, context or the environment, and utf8, base64, hex or raw encodings. The divergence is the path scope: the file nodes may only reach the data directory and whatever else the operator listed, resolved through symlinks so a link planted on the PVC cannot point out of it. Node-RED's file nodes take any path, which makes editing a flow equivalent to reading any file the process can. Writes are fsynced by default, which Node-RED's are not. |
 | `file in` | divergent | Whole-file, per-line and chunked reads, with utf8, base64, hex or raw output. Same path scope as the File node, and for the same reason. A read is also size-capped: Node-RED reads a whole file into memory with no limit, so pointing the node at the wrong path is an OOM-kill rather than an error. Past the cap the node says which limit was hit and that per-line or chunked mode would work. |
-| `influxdb out` | emberwire-only | Emberwire's own node. The type name matches the community node-red-contrib-influxdb so an imported flow finds it, but the configuration is not identical — check the fields after importing. |
-| `postgres` | emberwire-only | Emberwire's own node. Writes to and reads from PostgreSQL or TimescaleDB, with batch insert for message sequences. |
+| `influxdb out` | hotloop-flow-only | HotLoop Flow's own node. The type name matches the community node-red-contrib-influxdb so an imported flow finds it, but the configuration is not identical — check the fields after importing. |
+| `postgres` | hotloop-flow-only | HotLoop Flow's own node. Writes to and reads from PostgreSQL or TimescaleDB, with batch insert for message sequences. |
 | `watch` | divergent | Reports files and directories appearing, changing and being removed, with the same message shape Node-RED produces. It polls rather than using the kernel's notification interface, so a change is seen within the poll interval rather than immediately, and two changes inside one interval are reported once. That is a deliberate trade: fsnotify means per-platform code and a filename suffix that is a build constraint, which has already cost this codebase a day. Same path scope as the other file nodes, and the number of watched entries is capped so a recursive watch on a large tree cannot stall the runtime. |
 

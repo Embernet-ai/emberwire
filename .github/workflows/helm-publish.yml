@@ -25,12 +25,12 @@ jobs:
     name: Lint
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
-      - uses: azure/setup-helm@v4
+      - uses: azure/setup-helm@v5
 
       - name: helm lint
-        run: helm lint charts/emberwire-app
+        run: helm lint charts/hotloop-flow
 
       - name: Store labels are on the pod AND the Service
         # THE BIG FOUR, twice — the set defined by the canonical embernet-app
@@ -39,7 +39,7 @@ jobs:
         # Running Apps catalogue, which is the most common silent App Store
         # failure and is not visible from reading the chart.
         run: |
-          COUNT=$(helm template t charts/emberwire-app | grep -c 'embernet\.ai/store-app\|embernet\.ai/gui-type\|embernet\.ai/app-name\|embernet\.ai/gui-port')
+          COUNT=$(helm template t charts/hotloop-flow | grep -c 'embernet\.ai/store-app\|embernet\.ai/gui-type\|embernet\.ai/app-name\|embernet\.ai/gui-port')
           echo "store labels rendered: $COUNT"
           if [ "$COUNT" -ne 8 ]; then
             echo "::error::expected 8 store labels (4 on the pod, 4 on the Service), found $COUNT"
@@ -54,7 +54,7 @@ jobs:
         # until they were removed — nothing read either, and the tenant label is
         # the dashboard's to apply, not the chart's.
         run: |
-          EXTRA=$(helm template t charts/emberwire-app             | grep -oE 'embernet\.ai/[a-z-]+'             | sort -u             | grep -vE 'embernet\.ai/(store-app|gui-type|app-name|gui-port|display-name|app-icon)$' || true)
+          EXTRA=$(helm template t charts/hotloop-flow             | grep -oE 'embernet\.ai/[a-z-]+'             | sort -u             | grep -vE 'embernet\.ai/(store-app|gui-type|app-name|gui-port|display-name|app-icon)$' || true)
           if [ -n "$EXTRA" ]; then
             echo "::error::chart renders embernet.ai labels outside the canonical set: $EXTRA"
             exit 1
@@ -65,7 +65,7 @@ jobs:
         # -pod names precisely because renaming one after publication leaves a
         # duplicate card in the catalogue forever.
         run: |
-          NAME=$(grep '^name:' charts/emberwire-app/Chart.yaml | awk '{print $2}')
+          NAME=$(grep '^name:' charts/hotloop-flow/Chart.yaml | awk '{print $2}')
           case "$NAME" in
             *pod*) echo "::error::chart name '$NAME' contains 'pod'"; exit 1 ;;
             *) echo "chart name: $NAME" ;;
@@ -73,9 +73,9 @@ jobs:
 
       - name: Every network mode renders
         run: |
-          helm template t charts/emberwire-app >/dev/null
-          helm template t charts/emberwire-app --set network.mode=host >/dev/null
-          helm template t charts/emberwire-app \
+          helm template t charts/hotloop-flow >/dev/null
+          helm template t charts/hotloop-flow --set network.mode=host >/dev/null
+          helm template t charts/hotloop-flow \
             --set network.mode=macvlan \
             --set network.macvlan.master=eth1 \
             --set network.macvlan.ipam.subnet=10.20.30.0/24 >/dev/null
@@ -85,7 +85,7 @@ jobs:
         # validated. Assert each one actually fails.
         run: |
           fails() {
-            if helm template t charts/emberwire-app "$@" >/dev/null 2>&1; then
+            if helm template t charts/hotloop-flow "$@" >/dev/null 2>&1; then
               echo "::error::expected this to be rejected: $*"
               exit 1
             fi
@@ -99,12 +99,12 @@ jobs:
     needs: lint
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           fetch-depth: 0
           ref: ${{ inputs.tag || github.ref }}
 
-      - uses: azure/setup-helm@v4
+      - uses: azure/setup-helm@v5
 
       - name: Refuse to publish anything that is not a version tag
         run: |
@@ -123,7 +123,7 @@ jobs:
           VERSION='${{ inputs.tag || github.ref_name }}'
           VERSION="${VERSION#v}"
           mkdir -p .deploy
-          helm package charts/emberwire-app -d .deploy \
+          helm package charts/hotloop-flow -d .deploy \
             --version "$VERSION" --app-version "$VERSION"
 
       - name: Build the index
@@ -132,7 +132,7 @@ jobs:
         # place gets resurrected under its old name forever. Prior versions
         # predate the App Store contract and must not be resolvable.
         run: |
-          helm repo index .deploy --url https://embernet-ai.github.io/emberwire/
+          helm repo index .deploy --url https://hotloop.io/hotloop-flow/
 
       - uses: peaceiris/actions-gh-pages@v4
         with:

@@ -40,7 +40,7 @@ export function editNode(
     if (descriptor) {
       const badge = document.createElement('span');
       const level = descriptor.compatibility.level;
-      badge.className = `badge ${level === 'emberwire-only' ? 'only' : level}`;
+      badge.className = `badge ${level === 'hotloop-flow-only' ? 'only' : level}`;
       badge.textContent = level;
       if (descriptor.compatibility.notes) badge.title = descriptor.compatibility.notes;
       header.append(badge);

@@ -17,10 +17,10 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/embernet-ai/emberwire/internal/engine"
-	"github.com/embernet-ai/emberwire/internal/node"
-	emberruntime "github.com/embernet-ai/emberwire/internal/runtime"
-	"github.com/embernet-ai/emberwire/internal/shell"
+	"github.com/HotLoop-io/hotloop-flow/internal/engine"
+	"github.com/HotLoop-io/hotloop-flow/internal/node"
+	flowruntime "github.com/HotLoop-io/hotloop-flow/internal/runtime"
+	"github.com/HotLoop-io/hotloop-flow/internal/shell"
 )
 
 // The benchmark harness.
@@ -46,7 +46,7 @@ import (
 // care which runtime is on the other end, which is exactly what makes it fair:
 // the same load generator, the same payloads, the same box.
 
-const benchUsage = `usage: emberwire bench [flags]
+const benchUsage = `usage: hotloop-flow bench [flags]
 
   -mode engine|http|both   what to measure (default both)
   -target URL              an instance to drive over HTTP, ours or Node-RED's
@@ -93,7 +93,7 @@ type benchHost struct {
 	OS      string `json:"os"`
 	Arch    string `json:"arch"`
 	CPUs    int    `json:"cpus"`
-	Version string `json:"emberwireVersion"`
+	Version string `json:"hotloopFlowVersion"`
 }
 
 type engineStats struct {
@@ -226,7 +226,7 @@ func benchEngine(o benchOptions) (*engineStats, error) {
 		return nil, err
 	}
 
-	rt := emberruntime.New(node.Default, flows, emberruntime.Options{
+	rt := flowruntime.New(node.Default, flows, flowruntime.Options{
 		// A deep inbox so the measurement is of the chain rather than of the
 		// producer blocking on back-pressure. The bounded inbox is the right
 		// production default and the wrong thing to measure through.
@@ -315,13 +315,13 @@ func benchChainFlow(n int) []byte {
 	}
 	b, err := json.Marshal(entries)
 	if err != nil {
-		panic("emberwire: building the benchmark flow: " + err.Error())
+		panic("hotloop-flow: building the benchmark flow: " + err.Error())
 	}
 	return b
 }
 
 // waitForCount blocks until a node has received n messages.
-func waitForCount(rt *emberruntime.Runtime, nodeID string, n int64, within time.Duration) error {
+func waitForCount(rt *flowruntime.Runtime, nodeID string, n int64, within time.Duration) error {
 	deadline := time.Now().Add(within)
 	for time.Now().Before(deadline) {
 		for _, s := range rt.Snapshots() {
@@ -681,8 +681,8 @@ func readRSS(pid int) (uint64, bool) {
 // ---------------------------------------------------------------------------
 
 func printBenchReport(r benchReport) {
-	fmt.Printf("emberwire bench — %s\n", r.Ran)
-	fmt.Printf("  %s/%s, %d CPUs, emberwire %s\n\n", r.Host.OS, r.Host.Arch, r.Host.CPUs, r.Host.Version)
+	fmt.Printf("hotloop-flow bench — %s\n", r.Ran)
+	fmt.Printf("  %s/%s, %d CPUs, hotloop-flow %s\n\n", r.Host.OS, r.Host.Arch, r.Host.CPUs, r.Host.Version)
 
 	if r.Engine != nil {
 		e := r.Engine

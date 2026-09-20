@@ -11,7 +11,7 @@ import (
 	"sync/atomic"
 	"testing"
 
-	"github.com/embernet-ai/emberwire/internal/engine"
+	"github.com/HotLoop-io/hotloop-flow/internal/engine"
 )
 
 func sampleFlows(t *testing.T, label string) *engine.Flows {

@@ -7,8 +7,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/embernet-ai/emberwire/internal/node"
-	"github.com/embernet-ai/emberwire/internal/shell"
+	"github.com/HotLoop-io/hotloop-flow/internal/node"
+	"github.com/HotLoop-io/hotloop-flow/internal/shell"
 )
 
 // execHelperSentinel marks a run of this test binary that is standing in for an
@@ -20,7 +20,7 @@ import (
 // developer's Windows box and the distroless image this ships in. Deliberately
 // not starting with a dash — Go's flag package would try to parse it and the
 // binary would exit before reaching any test.
-const execHelperSentinel = "emberwire-exec-helper"
+const execHelperSentinel = "hotloop-flow-exec-helper"
 
 // TestExecHelperProcess is not a test. It is the program the exec node tests
 // run, selected by passing the sentinel on the command line.

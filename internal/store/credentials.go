@@ -32,14 +32,14 @@ import (
 //     which is the opposite of what you want standing between a stolen file and
 //     a weak passphrase.
 //
-// Emberwire writes AES-256-GCM keyed with Argon2id. It still reads the legacy
+// HotLoop Flow writes AES-256-GCM keyed with Argon2id. It still reads the legacy
 // format, because refusing to import an existing Node-RED deployment's
 // credentials would make migration impossible — but anything read that way is
 // re-encrypted under the new scheme on the next save.
 
 const (
 	// credFormatGCM is the current on-disk format.
-	credFormatGCM = "emberwire-aes256gcm-argon2id-v1"
+	credFormatGCM = "hotloop-flow-aes256gcm-argon2id-v1"
 
 	// Argon2id parameters. 64 MiB and one pass over four lanes is the
 	// RFC 9106 second recommended option, chosen because this runs on edge

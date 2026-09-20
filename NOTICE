@@ -1,4 +1,4 @@
-Emberwire
+HotLoop Flow
 Copyright 2026 Fireball Industries
 
 This product includes software developed at Fireball Industries (https://fireballz.ai)
@@ -8,10 +8,10 @@ for the EmberNET platform (https://embernet.ai).
 Attribution
 --------------------------------------------------------------------------------
 
-Emberwire is an independent implementation. It is not affiliated with, endorsed
+HotLoop Flow is an independent implementation. It is not affiliated with, endorsed
 by, or derived from the Node-RED project or the OpenJS Foundation.
 
-Emberwire reads and writes the Node-RED v1 flow file format, and implements
+HotLoop Flow reads and writes the Node-RED v1 flow file format, and implements
 compatible semantics for property expressions, message routing, and the core node
 set. That interoperability is deliberate: it is what lets an existing flow be
 imported without being rewritten.
@@ -25,7 +25,7 @@ Version 2.0:
     Copyright OpenJS Foundation and other contributors
     Licensed under the Apache License, Version 2.0
 
-Where Emberwire deliberately diverges from Node-RED behaviour, the divergence is
+Where HotLoop Flow deliberately diverges from Node-RED behaviour, the divergence is
 documented at the point of divergence in the source and summarised in
 docs/compatibility.md. Message cloning on fan-out, back-pressure on node inboxes,
 and credential encryption are the three that change observable behaviour.

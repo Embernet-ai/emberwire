@@ -1,0 +1,39 @@
+/* Self-hosted, latin subset only, bundled by esbuild into the editor build.
+ * The editor is embedded in the binary and runs on edge boxes with no internet,
+ * so a CDN font would be absent there rather than slow. Everything outside the
+ * latin subset falls through to the system font in --hl-font. */
+
+@font-face {
+  font-family: 'Inter Variable';
+  font-style: normal;
+  font-display: swap;
+  font-weight: 100 900;
+  src: url(../node_modules/@fontsource-variable/inter/files/inter-latin-wght-normal.woff2) format('woff2-variations');
+}
+
+@font-face {
+  font-family: 'JetBrains Mono';
+  font-style: normal;
+  font-display: swap;
+  font-weight: 400;
+  src: url(../node_modules/@fontsource/jetbrains-mono/files/jetbrains-mono-latin-400-normal.woff2) format('woff2');
+}
+
+@font-face {
+  font-family: 'JetBrains Mono';
+  font-style: normal;
+  font-display: swap;
+  font-weight: 700;
+  src: url(../node_modules/@fontsource/jetbrains-mono/files/jetbrains-mono-latin-700-normal.woff2) format('woff2');
+}
+
+/* A local Arial adjusted to occupy the same space as Inter, so the swap to the
+   real font does not move any text. See the note beside --hl-font in tokens.css. */
+@font-face {
+  font-family: 'Inter Fallback';
+  src: local('Arial');
+  size-adjust: 109.56%;
+  ascent-override: 88.42%;
+  descent-override: 22.02%;
+  line-gap-override: 0%;
+}

@@ -8,18 +8,20 @@ import (
 	"sync"
 	"time"
 
-	"github.com/embernet-ai/emberwire/internal/engine"
-	"github.com/embernet-ai/emberwire/internal/node"
+	"github.com/HotLoop-io/hotloop-flow/internal/engine"
+	"github.com/HotLoop-io/hotloop-flow/internal/node"
 )
 
 // Palette colours. Kept here rather than scattered as literals so the canvas
-// stays coherent; these are the EmberNET accent and its supporting neutrals
-// rather than Node-RED's pastels.
+// stays coherent: neutrals, with one danger color for the node that catches
+// errors, rather than Node-RED's pastels. Node bodies keep the same fill in both
+// themes and the label on them is fixed dark ink, so every value here has to
+// clear 4.5:1 against #1A1A1A.
 const (
 	colorCommon   = "#B3B3B3"
 	colorInject   = "#A6BBCF"
 	colorDebug    = "#87A980"
-	colorCatch    = "#E31837"
+	colorCatch    = "#FF6B6B"
 	colorStatus   = "#E6A03C"
 	colorLink     = "#DDDDDD"
 	colorFunction = "#FDD0A2"

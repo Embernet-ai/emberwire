@@ -6,7 +6,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/embernet-ai/emberwire/internal/engine"
+	"github.com/HotLoop-io/hotloop-flow/internal/engine"
 )
 
 // stubNode is a minimal Node used to exercise registration.
